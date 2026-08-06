@@ -1,0 +1,58 @@
+// ADI MCU Hackathon — VS Code Dev Container
+// Open this repo in VS Code → "Reopen in Container" to get the full toolchain.
+{
+    "name": "ADI MCU Hackathon Dev Container",
+    "build": {
+        // Dockerfile lives in resources/docker/
+        // Build context is resources/docker/ so all COPY paths resolve correctly
+        "dockerfile": "../resources/docker/Dockerfile",
+        "context": "../resources/docker",
+        "args": {
+            // LLVM_BUILD_JOBS=0 auto-detects a memory-safe job count; set a number to pin it
+            "LLVM_VERSION": "17.0.6",
+            "LLVM_BUILD_JOBS": "0"
+        }
+    },
+    // Dev Containers mounts the repo to /workspaces/<folder-name> by default
+    "workspaceFolder": "/workspaces/microcontroller-hackathon",
+    // Use the non-root 'dev' user created in the Dockerfile
+    "remoteUser": "dev",
+    "containerEnv": {
+        "LLVM_SRC": "/llvm-src",
+        "LLVM_BUILD": "/llvm-build",
+        "LLVM_INSTALL": "/opt/llvm"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // Verilog / SystemVerilog
+                "mshr-k.veriloghdl",
+                // C/C++ intelligence (clangd from the container)
+                "llvm-vs-code-extensions.vscode-clangd",
+                // Python (assembler scripts, cocotb testbenches)
+                "ms-python.python",
+                // LLVM TableGen syntax highlighting
+                "klaas.llvm-tablegen",
+                // Git
+                "eamodio.gitlens",
+                // Error lens — inline diagnostics
+                "usernamehw.errorlens",
+                // Hex file viewer
+                "slevesque.vscode-hexdump"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "files.eol": "\n",
+                // Point clangd at the LLVM install inside the container
+                "clangd.path": "/opt/llvm/bin/clangd",
+                "python.defaultInterpreterPath": "/usr/bin/python3",
+                // Use Verilator for RTL linting (installed in the container)
+                "verilog.linting.linter": "verilator",
+                "verilog.linting.verilator.runAtFileLocation": true,
+                "verilog.linting.verilator.arguments": "--lint-only -Wall"
+            }
+        }
+    },
+    // Run after container is created — hint for registering a custom LLVM backend
+    "postCreateCommand": "echo 'Container ready. To build an LLVM backend run: python3 resources/software/scripts/build_compiler.py <your.build-compiler.yml>'"
+}

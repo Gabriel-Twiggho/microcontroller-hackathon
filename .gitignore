@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Build / tool outputs
+build/
+output/
+*.hex
+
+# Editor / OS cruft
+.DS_Store
+Thumbs.db

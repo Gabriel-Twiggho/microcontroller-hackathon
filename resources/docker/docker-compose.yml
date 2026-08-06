@@ -1,0 +1,37 @@
+# =============================================================================
+# ADI MCU Hackathon — Docker Compose
+# =============================================================================
+# Build:   docker compose build
+# Start:   docker compose up -d  &&  docker compose exec dev bash
+# Stop:    docker compose down
+#
+# To bundle a Quartus installer (place the .run file in ./quartus/):
+#   docker compose build --build-arg QUARTUS_INSTALLER=QuartusLiteSetup-23.1std.0.991-linux.run
+# =============================================================================
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        LLVM_VERSION: ${LLVM_VERSION:-17.0.6}
+        LLVM_BUILD_JOBS: ${LLVM_BUILD_JOBS:-4}
+        # Uncomment to bundle Quartus (installer must be in ./quartus/)
+        # QUARTUS_INSTALLER: QuartusLiteSetup-23.1std.0.991-linux.run
+    image: hackathon-mcu-dev:latest
+    container_name: hackathon-mcu-dev
+
+    volumes:
+      # Mount the repo root so all resources are accessible
+      - ../..:/workspace
+      # X11 socket for GTKWave waveform viewer (Linux/WSL2 hosts)
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+    environment:
+      # X11 display forwarding (set DISPLAY on host or pass explicitly)
+      - DISPLAY=${DISPLAY:-:0}

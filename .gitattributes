@@ -1,0 +1,4 @@
+# Force LF for files that run inside the Linux dev container, so Windows
+# clones (core.autocrlf=true) don't break shebangs at runtime.
+Dockerfile text eol=lf
+*.sh text eol=lf
