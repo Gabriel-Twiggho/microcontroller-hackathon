@@ -30,7 +30,11 @@ module test_harness;
         $readmemh(program_file, u_cpu.u_imem.mem);
         $dumpfile("cpu_tb.vcd");
         $dumpvars(0, test_harness);
-        #25 rst_n = 1'b1;
+        // Release reset away from an active clock edge to avoid a race with
+        // synchronous CPU and register-file reset logic.
+        repeat (3) @(posedge clk);
+        @(negedge clk);
+        rst_n = 1'b1;
 
         cycle_count = 0;
         while (!dbg_halt && cycle_count < max_cycles) begin

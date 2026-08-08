@@ -1,18 +1,32 @@
 simulate:
   output-dir: ./build/sim
-  # Stage 0 has no instruction set or test program. Set this once Stage 1
-  # defines an encoding and creates a test hex image.
-  program: ./tests/test.hex
+  # Preassembled PID instruction test image.
+  program: ./tests/PID_Instrcution_test.hex
   rtl:
     base-dir: ./rtl
     files:
       - imem.v
+      - dmem.v
       - regfile.v
       - alu.v
       - decoder.v
       - cpu.v
       - tb.v
-  verify: []
+  verify:
+    - register: r3
+      value: 6
+    - register: r4
+      value: 16
+    - register: r6
+      value: 2
+    - register: r8
+      value: 12
+    - register: r9
+      value: 16
+    - register: r10
+      value: 6
+    - register: r11
+      value: 34
   options:
     max-cycles: 10000
     trace: false

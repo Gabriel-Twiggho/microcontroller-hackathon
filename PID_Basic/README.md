@@ -1,8 +1,8 @@
-# PID_Basic — Stage 0 CPU Scaffold
+# PID_Basic CPU
 
 This directory began as the Stage 0 project scaffold from the Tutorial
-Workbook. It now has an agreed initial PID instruction-set contract; the RTL
-datapath implementation remains the next stage.
+Workbook. It now has an agreed initial PID instruction-set contract and a
+single-cycle RTL implementation of that contract.
 
 ## Chosen starting architecture
 
@@ -19,7 +19,7 @@ The full instruction encoding, semantics, and PID-loop example are in
 [ISA.md](ISA.md). The machine-readable opcode definitions are kept in sync in
 `rtl/include/opcodes.vh` and `tools/isa_config.py`.
 
-## Stage 0 naming contract
+## Simulation naming contract
 
 The supplied simulation tooling expects these names:
 
@@ -27,11 +27,12 @@ The supplied simulation tooling expects these names:
 - `u_regfile` / `regs` for the register file
 - `dbg_halt` on the CPU top level
 
-They are present in the scaffold. `dbg_halt` remains low until the CPU decoder
-and control path are implemented, so a current simulation will time out by
-design.
+They are present in the CPU and are used by the supplied simulation tooling.
 
 ## Next step
 
-Proceed with the datapath: implement the decoder, ADD/SUB/MUL ALU operations,
-register write-back, data memory, `JMP`, and `HALT` from [ISA.md](ISA.md).
+Run the PID instruction test from the repository root:
+
+```bash
+python3 resources/software/scripts/simulate.py PID_Basic/PID_Basic.simulate.yml
+```

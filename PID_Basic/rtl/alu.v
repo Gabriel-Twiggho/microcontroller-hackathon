@@ -1,6 +1,8 @@
 `include "config.vh"
+`include "opcodes.vh"
 
-// Stage 1 TODO: choose an ALU-operation encoding and add ADD, SUB, and MOV.
+// Combinational arithmetic unit. Multiplication keeps the low DATA_WIDTH bits,
+// giving the ISA's defined modular two's-complement result.
 module alu (
     input  wire [`DATA_MSB:0] a,
     input  wire [`DATA_MSB:0] b,
@@ -8,6 +10,11 @@ module alu (
     output reg  [`DATA_MSB:0] result
 );
     always @* begin
-        result = {`DATA_WIDTH{1'b0}};
+        case (operation)
+            `ALU_ADD: result = a + b;
+            `ALU_SUB: result = a - b;
+            `ALU_MUL: result = a * b;
+            default:  result = {`DATA_WIDTH{1'b0}};
+        endcase
     end
 endmodule

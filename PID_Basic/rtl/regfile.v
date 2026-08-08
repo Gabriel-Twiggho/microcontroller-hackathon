@@ -1,7 +1,7 @@
 `include "config.vh"
 
-// Two asynchronous read ports and one synchronous write port. Stage 0 keeps
-// r0 hard-wired to zero and exposes regs for the simulation register dump.
+// Two asynchronous read ports and one synchronous write port. r0 is hard-wired
+// to zero, and regs remains visible for the simulation register dump.
 module regfile (
     input  wire                   clk,
     input  wire                   rst_n,
