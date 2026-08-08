@@ -113,23 +113,6 @@ MYISATargetLowering::MYISATargetLowering(const TargetMachine &TM,
   // Tell LLVM which register is the stack pointer (for stack-related opts).
   setStackPointerRegisterToSaveRestore(MYISA::R2);
 
-  // Stage 1 implements only integer ADD/SUB plus register/immediate moves.
-  // Explicitly expand operations for which the hardware has no instruction.
-  setOperationAction(ISD::BR_CC,     MVT::i32, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
-  setOperationAction(ISD::MUL,       MVT::i32, Expand);
-  setOperationAction(ISD::SDIV,      MVT::i32, Expand);
-  setOperationAction(ISD::UDIV,      MVT::i32, Expand);
-  setOperationAction(ISD::SREM,      MVT::i32, Expand);
-  setOperationAction(ISD::UREM,      MVT::i32, Expand);
-  setOperationAction(ISD::ROTL,      MVT::i32, Expand);
-  setOperationAction(ISD::ROTR,      MVT::i32, Expand);
-  setOperationAction(ISD::BSWAP,     MVT::i32, Expand);
-  setOperationAction(ISD::CTPOP,     MVT::i32, Expand);
-  setOperationAction(ISD::CTLZ,      MVT::i32, Expand);
-  setOperationAction(ISD::CTTZ,      MVT::i32, Expand);
-  setBooleanContents(ZeroOrOneBooleanContent);
-
   // TODO: declare the legality of operations for your ISA. Anything you do NOT
   //       configure here is assumed Legal (i.e. you have a direct instruction
   //       and a matching pattern in the .td files). Use:

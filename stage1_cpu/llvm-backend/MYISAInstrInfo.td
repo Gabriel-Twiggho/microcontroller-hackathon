@@ -166,10 +166,7 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_MYISACallSeqEnd,
 def ADD_rrr : Type1RRR<0x0000, "ADD",
   (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
   "ADD\t$rd, $rs1, $rs2",
-  [(set GPR:$rd, (add GPR:$rs1, GPR:$rs2))]> {
-  bits<5> rs2;
-  let arg2 = {0, rs2};
-}
+  [(set GPR:$rd, (add GPR:$rs1, GPR:$rs2))]>;
 
 // ADD rd, rs1, #imm5 — Integer addition (register + 5-bit immediate)
 // C equivalent: rd = rs1 + imm (where 0 ≤ imm ≤ 31)
@@ -181,34 +178,6 @@ def ADD_rri : Type1RRR<0x0000, "ADD",
   bits<5> imm;
   let arg2 = {1, imm};   // flag=1 (literal), value=imm
 }
-
-def SUB_rrr : Type1RRR<0x0001, "SUB",
-  (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
-  "SUB\t$rd, $rs1, $rs2",
-  [(set GPR:$rd, (sub GPR:$rs1, GPR:$rs2))]> {
-  bits<5> rs2;
-  let arg2 = {0, rs2};
-}
-
-def SUB_rri : Type1RRR<0x0001, "SUB",
-  (outs GPR:$rd), (ins GPR:$rs1, imm5:$imm),
-  "SUB\t$rd, $rs1, #$imm",
-  [(set GPR:$rd, (sub GPR:$rs1, imm5:$imm))]> {
-  bits<5> imm;
-  let arg2 = {1, imm};
-}
-
-def MOV_rr : Type1RR<0x000f, "MOV",
-  (outs GPR:$rd), (ins GPR:$rs),
-  "MOV\t$rd, $rs", []>;
-
-def LI : Type2LI<0x00d,
-  (outs GPR:$rd), (ins imm16u:$imm),
-  "LI\t$rd, #$imm",
-  [(set GPR:$rd, imm16u:$imm)]>;
-
-let isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [R3] in
-def RET : Type2Simple<0x00a, "RET", [(retflag)]>;
 
 // ADD_rrr and ADD_rri above are a complete WORKED EXAMPLE showing the two
 // most important parts of an instruction definition:

@@ -10,7 +10,7 @@ compile:
   output-dir: ./build/compile
 
   compiler:
-    install-dir: /opt/llvm    # build_compiler.py installs the rebuilt tools here
+    install-dir: /llvm-build  # use the locally rebuilt LLVM with your target
     target: myisa             # your backend's -march name (lower-case)
     misc:                     # extra clang flags (IR generation stage)
       - -O1
@@ -29,8 +29,8 @@ compile:
   # _start initialises SP, loads any arguments into the argument registers,
   # calls the entry function, then executes HALT.
   startup:
-    entry: add                # leaf C function to call
-    args: [21, 21]            # r8=21, r9=21; result returns in r8
+    entry: main               # C function to call
+    args: []                  # no arguments (main takes void)
 
   # Source groups. C files are compiled to LLVM IR, linked with llvm-link,
   # then lowered to your assembly via llc. ASM files are appended afterwards.
@@ -38,4 +38,4 @@ compile:
   groups:
     - group: Tests
       files:
-        - file: ./tests/test_add.c
+        - file: ./tests/test_sim.c

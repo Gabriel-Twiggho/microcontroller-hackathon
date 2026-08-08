@@ -11,6 +11,10 @@ module decoder (
     output reg                      use_imm_b,
     output reg  [1:0]               alu_operation,
     output reg                      write_enable,
+    output reg                      call,
+    output reg                      ret,
+    output reg                      target_absolute,
+    output reg  [`ADDR_WIDTH-1:0]   control_target,
     output reg                      halt
 );
     wire type1 = instruction[31];
@@ -21,13 +25,17 @@ module decoder (
         src_a = instruction[15:11];
         src_b = instruction[9:5];
         dest = instruction[4:0];
-        // Type 1 has 5-bit inline immediates in the arg1 field. Type 2 LI
-        // replaces this below with its full 16-bit payload.
-        immediate = {27'b0, instruction[15:11]};
+        // Type 1's inline immediate is arg2[4:0]. Type 2 LI replaces this
+        // with its full 16-bit payload below.
+        immediate = {27'b0, instruction[9:5]};
         use_imm_a = instruction[16];
         use_imm_b = instruction[10];
         alu_operation = `ALU_ADD;
         write_enable = 0;
+        call = 0;
+        ret = 0;
+        target_absolute = 0;
+        control_target = instruction[15:0];
         halt = 0;
 
         if (type1) begin
@@ -54,6 +62,14 @@ module decoder (
                 end
                 // asm.py encodes HALT as JMP #0.
                 `T2_JMP: halt = (instruction[21] == 0 && instruction[15:0] == 0);
+                `T2_CALL: begin
+                    call = 1;
+                    target_absolute = instruction[21];
+                end
+                `T2_RET: begin
+                    ret = 1;
+                    src_a = 5'd3; // r3 is the leaf-function link register.
+                end
                 default: halt = 1;
             endcase
         end

@@ -1,0 +1,24 @@
+# Simulate the standalone hex image produced from tests/test_add.c.
+simulate:
+  output-dir: ./build/c-sim
+  program: ./build/compile/program.hex
+
+  rtl:
+    base-dir: ./rtl
+    files:
+      - alu.v
+      - regfile.v
+      - imem.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+
+  verify:
+    - register: r8
+      value: 42
+
+  options:
+    max-cycles: 100
+    trace: false
+
+  assembler: ./tools/asm.py

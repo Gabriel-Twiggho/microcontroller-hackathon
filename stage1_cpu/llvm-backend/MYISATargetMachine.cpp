@@ -78,7 +78,7 @@ static std::string computeDataLayout() {
   //       Format reference: https://llvm.org/docs/LangRef.html#data-layout
   //       Example (little-endian, 32-bit pointers/ints, 32-bit native+stack):
   //         return "e-p:32:32-i32:32-n32-S32";
-  return "e-p:16:16-i32:32-n32-S32";
+  return ""; // TODO: replace with your data-layout string
 }
 
 // MYISATargetMachine constructor

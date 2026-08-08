@@ -62,7 +62,9 @@
 // If there were multiple return values, you'd add more registers here.
 //===----------------------------------------------------------------------===//
 def RetCC_MYISA : CallingConv<[
-  CCIfType<[i32], CCAssignToReg<[R8]>>
+  // TODO: assign return values to your ABI's return register(s).
+  //       Example: return a 32-bit value in r8.
+  //   CCIfType<[i32], CCAssignToReg<[R8]>>
 ]>;
 
 //===----------------------------------------------------------------------===//
@@ -77,8 +79,11 @@ def RetCC_MYISA : CallingConv<[
 // This matches the assembler's convention and ABI documentation.
 //===----------------------------------------------------------------------===//
 def CC_MYISA : CallingConv<[
-  CCIfType<[i32], CCAssignToReg<[R8, R9, R10, R11, R12, R13, R14, R15]>>,
-  CCIfType<[i32], CCAssignToStack<4, 4>>
+  // TODO: describe how arguments are passed in your ABI. Rules are tried in
+  //       order; the first that matches an argument wins. A typical scheme is
+  //       "first N integer args in registers, the rest spilled to the stack":
+  //   CCIfType<[i32], CCAssignToReg<[R8, R9, R10, R11, R12, R13, R14, R15]>>,
+  //   CCIfType<[i32], CCAssignToStack<4, 4>>
 ]>;
 
 //===----------------------------------------------------------------------===//
@@ -100,5 +105,4 @@ def CC_MYISA : CallingConv<[
 //       Example:
 //   def CSR_MYISA : CalleeSavedRegs<(add R16, R17, R18, R19, R20, R21, R22, R23,
 //                                        R24, R25, R26, R27, R28, R29, R30, R31)>;
-def CSR_MYISA : CalleeSavedRegs<(add R16, R17, R18, R19, R20, R21, R22, R23,
-                                     R24, R25, R26, R27, R28, R29, R30, R31)>;
+def CSR_MYISA : CalleeSavedRegs<(add)>;

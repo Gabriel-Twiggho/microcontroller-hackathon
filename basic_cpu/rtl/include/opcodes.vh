@@ -8,6 +8,8 @@
 
 // Type 2: bit 31 is zero, opcode is bits [30:22].
 `define T2_JMP 9'h004
+`define T2_CALL 9'h009
+`define T2_RET  9'h00a
 `define T2_LI  9'h00d
 
 `define ALU_ADD 2'd0

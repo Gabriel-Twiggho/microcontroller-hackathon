@@ -53,7 +53,6 @@
 #include "MYISASubtarget.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
-#include "llvm/Support/ErrorHandling.h"
 
 // Include the auto-generated constructor and destructor for MYISAGenInstrInfo.
 // This provides the instruction descriptor tables, operand info, etc.
@@ -89,7 +88,17 @@ void MYISAInstrInfo::storeRegToStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register SrcReg,
     bool isKill, int FrameIndex, const TargetRegisterClass *RC,
     const TargetRegisterInfo *TRI, Register VReg) const {
-  llvm_unreachable("Stage 1 has no register spilling; add STORE in Stage 3");
+  DebugLoc DL;
+  if (MI != MBB.end())
+    DL = MI->getDebugLoc();
+
+  // Emit: STORE_reg SrcReg, [FrameIndex + 0]
+  // The two operands after SrcReg are the memsrc composite: (base, offset)
+  // FrameIndex becomes the base, 0 is the offset.
+  BuildMI(MBB, MI, DL, get(MYISA::STORE_reg))
+      .addReg(SrcReg, getKillRegState(isKill))
+      .addFrameIndex(FrameIndex)
+      .addImm(0);
 }
 
 // loadRegFromStackSlot — Emit a load instruction to reload a spilled register.
@@ -98,5 +107,12 @@ void MYISAInstrInfo::loadRegFromStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register DestReg,
     int FrameIndex, const TargetRegisterClass *RC,
     const TargetRegisterInfo *TRI, Register VReg) const {
-  llvm_unreachable("Stage 1 has no register spilling; add LOAD in Stage 3");
+  DebugLoc DL;
+  if (MI != MBB.end())
+    DL = MI->getDebugLoc();
+
+  // Emit: LOAD_reg DestReg, [FrameIndex + 0]
+  BuildMI(MBB, MI, DL, get(MYISA::LOAD_reg), DestReg)
+      .addFrameIndex(FrameIndex)
+      .addImm(0);
 }
