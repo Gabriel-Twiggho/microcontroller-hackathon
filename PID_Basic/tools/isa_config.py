@@ -3,13 +3,25 @@
 """
 isa_config.py — ISA configuration for the assembler (edit this file).
 
-This is the assembler's source of truth for the PID_Basic ISA. The matching
-RTL defines are in rtl/include/opcodes.vh; ISA.md documents the format and
-semantics. Keep all three files consistent when the ISA changes.
+This is the single source of truth for your instruction encoding. The generic
+assembler engine (`asm.py`) imports the tables and encode_*() functions defined
+here and needs no changes as your ISA grows — you only edit this file.
+
+>>> The values below are a complete, working EXAMPLE encoding (a 32-bit, two-
+>>> format design) so the toolchain runs out of the box. Replace the opcode
+>>> tables, register map, and bit-field layouts with YOUR OWN ISA's design. <<<
+
+Steps to adapt it:
+  1. Set INSTR_WIDTH / REG_COUNT / REG_ALIASES to your architecture.
+  2. Replace T1_OPS / T2_OPS with your mnemonics and opcode numbers.
+  3. Update T1_UNARY / BRANCH_OPS / MEM_OPS to match your instruction groups.
+  4. Rewrite TYPE1_LAYOUT / TYPE2_LAYOUT with your exact bit-field positions.
+  5. Adjust encode_type1() / encode_type2() (or add more encoders) if your
+     instruction formats differ from the two shown here.
 """
 
 # ---------------------------------------------------------------------------
-# Global ISA shape
+# Global ISA shape  — TODO: set for your architecture
 # ---------------------------------------------------------------------------
 INSTR_WIDTH = 32
 REG_COUNT = 32
@@ -19,37 +31,60 @@ REG_ALIASES = {
 }
 
 # ---------------------------------------------------------------------------
-# Opcode tables
+# Opcode tables  — TODO: replace with your mnemonics + opcode values
 # ---------------------------------------------------------------------------
 
-# Type 1: ALU operations, 14-bit opcode, instruction MSB is 1.
+# Type 1 opcodes (example: 14-bit opcode, MSB of the word is always 1)
 T1_OPS = {
     "ADD": 0x0000,
     "SUB": 0x0001,
-    "MUL": 0x0002,
+    "OR": 0x0002,
+    "LOR": 0x0003,
+    "AND": 0x0004,
+    "LAND": 0x0005,
+    "XOR": 0x0006,
+    "NOT": 0x0007,
+    "NEG": 0x0008,
+    "ABS": 0x0009,
+    "SHL": 0x000A,
+    "SHR": 0x000B,
+    "SAR": 0x000C,
+    "CMP": 0x000D,
+    "MUL": 0x000E,
+    "MOV": 0x000F,
+    "LUI": 0x0010,
 }
 
-# No unary ALU instructions in the initial PID ISA.
-T1_UNARY = set()
+# Type 1 ops that only use arg1 (no arg2)
+T1_UNARY = {"NOT", "NEG", "ABS", "MOV", "LUI"}
 
-# Type 2: immediate, memory, and control operations, 9-bit opcode, MSB is 0.
+# Type 2 opcodes (example: 9-bit opcode, MSB of the word is always 0)
 T2_OPS = {
     "LOAD": 0x000,
     "STORE": 0x001,
-    "JMP": 0x002,
-    "LI": 0x003,
-    "HALT": 0x004,
+    "LOADB": 0x002,
+    "STOREB": 0x003,
+    "JMP": 0x004,
+    "JZ": 0x005,
+    "JNZ": 0x006,
+    "JLT": 0x007,
+    "JGT": 0x008,
+    "CALL": 0x009,
+    "RET": 0x00A,
+    "PUSH": 0x00B,
+    "POP": 0x00C,
+    "LI": 0x00D,
 }
 
-# JMP uses either a PC-relative label/offset or an absolute #address.
-BRANCH_OPS = {"JMP"}
+# Control-flow instructions that use branch/call target handling
+BRANCH_OPS = {"JMP", "JZ", "JNZ", "JLT", "JGT", "CALL"}
 
-# The initial format provides 16-bit absolute word addresses only.
-MEM_OPS = {"LOAD", "STORE"}
+# Memory instructions that use [addr] / [rN + off] operand handling
+MEM_OPS = {"LOAD", "STORE", "LOADB", "STOREB"}
 
 
 # ---------------------------------------------------------------------------
-# Encoding layout
+# Encoding layout  — TODO: all bit positions and widths live here
 # ---------------------------------------------------------------------------
 
 TYPE1_LAYOUT = {
