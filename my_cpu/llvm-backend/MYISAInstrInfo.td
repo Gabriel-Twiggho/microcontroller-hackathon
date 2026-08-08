@@ -185,51 +185,60 @@ def ADD_rri : Type1RRR<0x0000, "ADD",
 //   2. The `[(set GPR:$rd, (<dagnode> ...))]` pattern that tells the
 //      instruction selector how to compile a C operator into this instruction.
 //
-// TODO: define the rest of your ALU instructions using the same pattern.
-//       Map each LLVM SelectionDAG node to one of your opcodes, for example:
-//         (sub  ...) -> your SUB     (and  ...) -> your AND
-//         (or   ...) -> your OR      (xor  ...) -> your XOR
-//         (shl  ...) -> your SHL     (srl  ...) -> your SHR (logical)
-//         (sra  ...) -> your SAR     (mul  ...) -> your MUL
-//         (not  ...) -> your NOT     (sub 0, x) -> your NEG    (abs x) -> ABS
-//       Give patternless defs (empty []) for instructions the compiler emits
-//       itself rather than pattern-matches. The provided .cpp files expect a
-//       few such instructions to exist BY NAME (rename them or update the .cpp):
-//         MOV_rr   - register-to-register copy      (MYISAInstrInfo.cpp)
-//         LUI      - load-upper-immediate           (constant materialisation)
-//         CMP_rr / CMP_ri - compare, writing the condition reg (Defs = [R5])
-//       See the Stage 1 tutorial for a worked example.
+// SUB rd, rs1, rs2 — Integer subtraction (register - register)
+def SUB_rrr : Type1RRR<0x0001, "SUB",
+  (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
+  "SUB\t$rd, $rs1, $rs2",
+  [(set GPR:$rd, (sub GPR:$rs1, GPR:$rs2))]>;
+
+// SUB rd, rs1, #imm5 — Integer subtraction (register - 5-bit immediate)
+def SUB_rri : Type1RRR<0x0001, "SUB",
+  (outs GPR:$rd), (ins GPR:$rs1, imm5:$imm),
+  "SUB\t$rd, $rs1, #$imm",
+  [(set GPR:$rd, (sub GPR:$rs1, imm5:$imm))]> {
+  bits<5> imm;
+  let arg2 = {1, imm};
+}
+
+// MOV rd, rs1 — Register-to-register copy. Patternless: this is only ever
+// emitted directly by MYISAInstrInfo.cpp::copyPhysReg, never pattern-matched
+// from IR (LLVM has no standalone "copy" IR node).
+def MOV_rr : Type1RR<0x000F, "MOV",
+  (outs GPR:$rd), (ins GPR:$rs1),
+  "MOV\t$rd, $rs1", []>;
 
 //===----------------------------------------------------------------------===//
-// Type 2 — Memory, Branch, Call and Stack Instructions
-//
-// TODO: define your memory-access, control-flow, call/return and stack
-//       instructions here. Follow the same style as the ADD example above:
-//       give each a format base class, an assembly string, and (where the
-//       compiler should pattern-match it) a `[(set ...)]` / `[(...)]` pattern.
-//
-//       Nodes/patterns the compiler expects to be matchable:
-//         (load addr:$src)              -> a register-indirect word LOAD
-//         (store GPR:$rs, addr:$dst)    -> a register-indirect word STORE
-//         (zextloadi8 addr:$src)        -> a byte load (zero-extended)
-//         (truncstorei8 GPR:$rs, addr)  -> a byte store
-//         (set GPR:$rd, imm16u:$imm)    -> a load-immediate (LI)
-//         (br bb:$target)               -> an unconditional branch (JMP)
-//         (retflag)                     -> the return instruction (RET)
-//
-//       Instruction defs the provided .cpp files reference BY NAME (either
-//       keep these names or update the C++):
-//         LOAD_reg / STORE_reg  - spill & reload          (MYISAInstrInfo.cpp)
-//         LI                    - constant materialisation (MYISAISelDAGToDAG.cpp)
-//         PUSH / POP            - prologue / epilogue       (MYISAFrameLowering.cpp)
-//         CALL                  - call selection            (MYISAISelDAGToDAG.cpp)
-//         JZ / JNZ / JLT / JGT  - conditional branches      (MYISAISelDAGToDAG.cpp)
-//
-//       Remember to set the machine-level flags on control-flow instructions
-//       (isBranch/isTerminator on branches, isCall on calls, isReturn/isBarrier
-//       on returns, Defs/Uses of the link and stack-pointer registers, etc.).
-//       See the Stage 2–3 tutorials for a worked example.
+// Type 2 — Memory and Constant-Loading Instructions
 //===----------------------------------------------------------------------===//
+
+// LI rd, #imm16 — Load a 16-bit zero-extended immediate into a register.
+def LI : Type2Imm<0x00D, (outs GPR:$rd), (ins imm16u:$imm),
+  "LI\t$rd, #$imm",
+  [(set GPR:$rd, imm16u:$imm)]>;
+
+// RET — return from function. LowerReturn (already implemented in
+// MYISAISelLowering.cpp) unconditionally emits the `retflag` node for
+// every function, including leaf functions, so RET must exist and match
+// it even at Stage 1 — this isn't optional the way CALL/PUSH/POP are.
+let isReturn = 1, isTerminator = 1, isBarrier = 1 in
+def RET : Type2Inst<0x00A, (outs), (ins), "RET", [(retflag)]>;
+
+// LOAD_reg rd, [addr] — SP-relative word load. Only used for register
+// reload (MYISAInstrInfo.cpp::loadRegFromStackSlot / eliminateFrameIndex);
+// no direct IR pattern in Stage 1 (no general memory addressing yet).
+def LOAD_reg : Type2Mem<0x000, (outs GPR:$rd), (ins memsrc:$addr),
+  "LOAD\t$rd, $addr", []> {
+  bits<5> rd;
+  let reg = rd;
+}
+
+// STORE_reg rs, [addr] — SP-relative word store. Only used for register
+// spill (MYISAInstrInfo.cpp::storeRegToStackSlot / eliminateFrameIndex).
+def STORE_reg : Type2Mem<0x001, (outs), (ins GPR:$rs, memsrc:$addr),
+  "STORE\t$rs, $addr", []> {
+  bits<5> rs;
+  let reg = rs;
+}
 
 //===----------------------------------------------------------------------===//
 // Pseudo-instructions (expanded during lowering, not encoded)

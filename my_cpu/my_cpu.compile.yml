@@ -10,14 +10,12 @@ compile:
   output-dir: ./build/compile
 
   compiler:
-    install-dir: /llvm-build  # use the locally rebuilt LLVM with your target
-    target: myisa             # your backend's -march name (lower-case)
-    misc:                     # extra clang flags (IR generation stage)
+    install-dir: /opt/llvm    # locally-built LLVM with the myisa target registered
+    target: myisa              # matches my_cpu.build-compiler.yml's target.name
+    misc:                      # extra clang flags (IR generation stage)
       - -O1
-    codegen:                  # extra llc flags (code-generation stage)
+    codegen:                   # extra llc flags (code-generation stage)
       - -O0
-    add-path:                 # additional C include search paths
-      - ./include
 
   output:
     asm:  true                # always emit a combined .asm file
@@ -26,16 +24,14 @@ compile:
     assembler: ""             # path to your assembler (auto-detects tools/asm.py)
 
   # Startup stub: prepended to the compiled output so the hex is standalone.
-  # _start initialises SP, loads any arguments into the argument registers,
-  # calls the entry function, then executes HALT.
+  # _start initialises SP, loads the args below into the argument registers
+  # (r8, r9, ... per MYISACallingConv.td), calls the entry function, then
+  # executes HALT. There is no main() in test_add.c, so entry is add itself.
   startup:
-    entry: main               # C function to call
-    args: []                  # no arguments (main takes void)
+    entry: add                # call add(a, b) directly
+    args: [21, 21, 21]             # r8=21, r9=21 -> add() should return 42 in r8
 
-  # Source groups. C files are compiled to LLVM IR, linked with llvm-link,
-  # then lowered to your assembly via llc. ASM files are appended afterwards.
-  # TODO: point these at your own test sources.
   groups:
     - group: Tests
       files:
-        - file: ./tests/test_sim.c
+        - file: ./tests/test_add.c

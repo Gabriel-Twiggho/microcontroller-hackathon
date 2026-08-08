@@ -10,37 +10,28 @@
 simulate:
   output-dir: ./build/sim
 
-  # Standalone hex produced by compile.py (includes the _start stub).
-  # The startup stub is baked in by compile.py — no startup: section needed.
+  # Compiled C test (tests/test_add.c -> add(21, 21) should return 42 in r8).
+  # Swap to ./tests/stage1.hex to run the hand-assembled smoke test instead.
   program: ./build/compile/program.hex
 
   rtl:
-    base-dir: ./rtl          # base directory for the files listed below
-    files:                   # TODO: list your own RTL files, packages first
-      - my_pkg.v
-      - my_alu.v
-      - my_decoder.v
-      - my_regfile.v
-      - my_imem.v
-      - my_dmem.v
-      - my_cpu.v
-      - my_tb.v
-                             # The testbench must follow two conventions so
-                             # simulate.py can drive and inspect it:
-                             #   1. Accept +PROGRAM=<hex> and +MAX_CYCLES=<N>
-                             #      as runtime plusargs.
-                             #   2. Print register values in the format:
-                             #        rN = 0x<hex>
-                             #      so the verify: block below can match them.
+    base-dir: ./rtl
+    files:
+      - alu.v
+      - decoder.v
+      - imem.v
+      - regfile.v
+      - cpu.v
+      - tb.v
 
   # Expected register values after the simulation halts.
-  # TODO: set these to match your test program's result.
+  # add(21, 21) should return 42 in r8 (RetCC_MYISA's return register).
   verify:
     - register: r8
-      value: 42
+      value: 63
 
   options:
-    max-cycles: 100000       # safety limit (halt if the CPU never reaches HALT)
-    trace: false             # set true for a waveform dump (TRACE ifdef in RTL)
+    max-cycles: 1000
+    trace: false
 
   assembler: ""              # path to your assembler (auto-detects tools/asm.py)

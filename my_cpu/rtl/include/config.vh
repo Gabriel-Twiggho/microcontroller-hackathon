@@ -53,4 +53,17 @@
 // Downstream consumers: stack-pointer updates and any PUSH/POP logic.
 `define WORD_BYTES (`DATA_WIDTH / 8)
 
+// Type 1 (ALU) opcode field width. Downstream consumers: decoder's
+// Type 1 opcode output and the ALU's opcode input.
+`define OPCODE_W 14
+
+// Type 2 (Memory/Control) opcode field width. Downstream consumers:
+// decoder's Type 2 opcode output.
+`define T2_OPCODE_W 9
+
+// Type 2 address/immediate field width. Downstream consumers: decoder's
+// t2_addr output (used for LI's immediate and, in later stages, memory
+// addresses/branch offsets).
+`define T2_ADDR_W 16
+
 `endif

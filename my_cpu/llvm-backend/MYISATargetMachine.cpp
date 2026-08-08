@@ -74,11 +74,10 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeMYISATarget() {
 //   n32     = native integer width is 32 bits (affects type promotion)
 //   S32     = stack is 32-bit (4-byte) aligned
 static std::string computeDataLayout() {
-  // TODO: return the LLVM data-layout string describing your memory model.
-  //       Format reference: https://llvm.org/docs/LangRef.html#data-layout
-  //       Example (little-endian, 32-bit pointers/ints, 32-bit native+stack):
-  //         return "e-p:32:32-i32:32-n32-S32";
-  return ""; // TODO: replace with your data-layout string
+  // Little-endian; 16-bit pointers (matches config.vh's ADDR_WIDTH=16
+  // address space); 32-bit integers, native width, and stack alignment
+  // (matches config.vh's DATA_WIDTH=32 register/ALU width).
+  return "e-p:16:16-i32:32-n32-S32";
 }
 
 // MYISATargetMachine constructor

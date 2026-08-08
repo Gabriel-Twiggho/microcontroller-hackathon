@@ -113,28 +113,21 @@ MYISATargetLowering::MYISATargetLowering(const TargetMachine &TM,
   // Tell LLVM which register is the stack pointer (for stack-related opts).
   setStackPointerRegisterToSaveRestore(MYISA::R2);
 
-  // TODO: declare the legality of operations for your ISA. Anything you do NOT
-  //       configure here is assumed Legal (i.e. you have a direct instruction
-  //       and a matching pattern in the .td files). Use:
-  //         setOperationAction(ISD::<op>, MVT::<ty>, Custom); // handle in LowerOperation()
-  //         setOperationAction(ISD::<op>, MVT::<ty>, Expand); // let LLVM decompose / libcall
-  //         setOperationAction(ISD::<op>, MVT::<ty>, Promote);// widen a narrow type
-  //
-  //       Things you will almost certainly need to configure:
-  //         - Custom-lower control flow that needs a compare + branch pair,
-  //           e.g.  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
-  //                 setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
-  //         - Custom-lower global variable addresses, e.g.
-  //                 setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
-  //         - Expand operations your hardware lacks (division, floating point,
-  //           rotates, bit-counting, byte-swap, dynamic stack alloc, ...).
-  //         - Promote sub-word integer ops (i1/i8/i16) to your native width so
-  //           the type legalizer does not try to emit narrow operations, e.g.
-  //             for (MVT VT : {MVT::i1, MVT::i8, MVT::i16})
-  //               setOperationAction(ISD::ADD, VT, Promote); // ...and friends
-  //         - setBooleanContents(ZeroOrOneBooleanContent);
-  //
-  //       See the Stage 1 tutorial for a worked example.
+  // Stage 1 has no branch or multiply/divide hardware yet — expand these so
+  // the legalizer doesn't try to emit instructions we haven't built.
+  // BR_CC/SELECT_CC become Custom once Stage 2 adds CMP + conditional
+  // branches and LowerBR_CC/LowerSELECT_CC are implemented.
+  setOperationAction(ISD::BR_CC, MVT::i32, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
+  setOperationAction(ISD::MUL, MVT::i32, Expand);
+  setOperationAction(ISD::SDIV, MVT::i32, Expand);
+  setOperationAction(ISD::UDIV, MVT::i32, Expand);
+  setOperationAction(ISD::SREM, MVT::i32, Expand);
+  setOperationAction(ISD::UREM, MVT::i32, Expand);
+
+  // LowerGlobalAddress is already implemented and globals fit in our
+  // 16-bit address space in one instruction, so enable it now.
+  setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 }
 
 //===----------------------------------------------------------------------===//

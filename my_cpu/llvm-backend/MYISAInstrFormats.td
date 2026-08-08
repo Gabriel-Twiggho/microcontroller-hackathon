@@ -139,17 +139,87 @@ class Type1RRR<bits<14> op, string mnemonic, dag outs, dag ins,
 // it inherits the base encoding and binds the DAG operands ($rd, $rs1, ...)
 // to specific bit fields. Use it as a model for every other format your ISA
 // needs.
+
+// Type1RR: Two-operand Type 1 instruction (one source, one destination).
+// Used for unary ALU operations: MOV (Stage 1), NOT/NEG/ABS/LUI (stretch).
+// arg2 is unused by these instructions and left zeroed.
+class Type1RR<bits<14> op, string mnemonic, dag outs, dag ins,
+              string asmstr, list<dag> pattern>
+    : Type1Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rd;
+  bits<5> rs1;
+  let result    = rd;
+  let arg1{5}   = 0;    // Flag = 0 means "this is a register"
+  let arg1{4-0} = rs1;
+  let arg2      = 0;    // Unused for unary ops
+}
+
+//===----------------------------------------------------------------------===//
+// Type 2 — Memory / Control (bit 31 = 0)
 //
-// TODO: define the remaining instruction formats for your ISA. Common
-//       additional formats are:
-//         - a two-operand ALU format (unary ops: NOT/NEG/MOV/...)
-//         - a memory-access format (load/store) with an address field
-//         - a branch/jump format (set isBranch = 1; isTerminator = 1;)
-//         - a call format         (set isCall = 1;)
-//         - a stack push/pop format
-//       Each is just another `class ... : <base> { let <field> = ...; }`.
-//       Add or remove formats to match your own encoding — a very regular ISA
-//       might need only one or two.
+// Bit layout (32 bits total):
+//   [31]    = 0 (type discriminator)
+//   [30:22] = opcode (9 bits)
+//   [21]    = ri (register/immediate-or-absolute flag)
+//   [20:16] = reg (5 bits — the data register: rd for loads/LI, rs for stores)
+//   [15:0]  = addr (16 bits — absolute address, SP-relative offset, or
+//             16-bit immediate, depending on the instruction)
+//===----------------------------------------------------------------------===//
+
+class Type2Inst<bits<9> op, dag outs, dag ins, string asmstr,
+                list<dag> pattern>
+    : Instruction {
+  let Namespace = "MYISA";
+  let Size = 4;
+
+  field bits<32> Inst;
+  field bits<32> SoftFail = 0;
+
+  let Inst{31} = 0;
+
+  bits<9> Opcode = op;
+  let Inst{30-22} = Opcode;
+
+  bits<1> ri;
+  bits<5> reg;
+  bits<16> addr;
+
+  let Inst{21}    = ri;
+  let Inst{20-16} = reg;
+  let Inst{15-0}  = addr;
+
+  dag OutOperandList = outs;
+  dag InOperandList = ins;
+  let AsmString = asmstr;
+  let Pattern = pattern;
+}
+
+// Type2Imm: used by LI (Load Immediate). ri is hardcoded 1 (matches
+// tools/isa_config.py's encode_type2(opcode, ri=1, reg, imm16) for LI).
+class Type2Imm<bits<9> op, dag outs, dag ins, string asmstr,
+               list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rd;
+  bits<16> imm;
+  let reg = rd;
+  let ri  = 1;
+  let addr = imm;
+}
+
+// Type2Mem: used by LOAD_reg/STORE_reg (SP-relative spill/reload — see
+// MYISAInstrInfo.cpp storeRegToStackSlot/loadRegFromStackSlot). The base
+// register is always SP (set by MYISARegisterInfo::eliminateFrameIndex), so
+// only the data register matters; the memsrc operand's base+offset
+// sub-fields are left unbound (no MCCodeEmitter is used in this pipeline —
+// tools/asm.py re-encodes from the printed assembly text, not from these
+// Inst bits). Concrete defs bind `reg` to their own data-register operand
+// (named $rd for loads, $rs for stores), since the operand name differs
+// between the two.
+class Type2Mem<bits<9> op, dag outs, dag ins, string asmstr,
+               list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  let ri  = 0;
+}
 
 // Pseudo-instruction — not encoded; exists only during code generation.
 // Pseudos are used for operations that need to exist in the MachineInstr
