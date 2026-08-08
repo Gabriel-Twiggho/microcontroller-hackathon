@@ -87,15 +87,29 @@ def R7  : MYISAReg< 7, "r7">;   // Reserved for future use
 //   r30:     used as frame pointer when variable-size stack frames are needed
 
 def R8  : MYISAReg< 8, "r8">;   // First general-purpose register (WORKED EXAMPLE)
-
-// TODO: define the rest of your general-purpose registers, following the
-//       same pattern as R8 above. Each def needs a 5-bit hardware encoding
-//       (first argument) and an assembly-language name (second argument).
-//       Example (uncomment / adapt for however many registers your ISA has):
-//         def R9  : MYISAReg< 9, "r9">;
-//         def R10 : MYISAReg<10, "r10">;
-//         ...
-//         def R31 : MYISAReg<31, "r31">;
+def R9  : MYISAReg< 9, "r9">;
+def R10 : MYISAReg<10, "r10">;
+def R11 : MYISAReg<11, "r11">;
+def R12 : MYISAReg<12, "r12">;
+def R13 : MYISAReg<13, "r13">;
+def R14 : MYISAReg<14, "r14">;
+def R15 : MYISAReg<15, "r15">;
+def R16 : MYISAReg<16, "r16">;
+def R17 : MYISAReg<17, "r17">;
+def R18 : MYISAReg<18, "r18">;
+def R19 : MYISAReg<19, "r19">;
+def R20 : MYISAReg<20, "r20">;
+def R21 : MYISAReg<21, "r21">;
+def R22 : MYISAReg<22, "r22">;
+def R23 : MYISAReg<23, "r23">;
+def R24 : MYISAReg<24, "r24">;
+def R25 : MYISAReg<25, "r25">;
+def R26 : MYISAReg<26, "r26">;
+def R27 : MYISAReg<27, "r27">;
+def R28 : MYISAReg<28, "r28">;
+def R29 : MYISAReg<29, "r29">;
+def R30 : MYISAReg<30, "r30">;
+def R31 : MYISAReg<31, "r31">;
 
 //===----------------------------------------------------------------------===//
 // Register classes
@@ -114,15 +128,18 @@ def R8  : MYISAReg< 8, "r8">;   // First general-purpose register (WORKED EXAMPL
 // *** what order (caller-saved first is conventional).                     ***
 //===----------------------------------------------------------------------===//
 
-// GPR: General-purpose registers available for allocation (r8-r31).
+// GPR: Registers accepted by general integer instruction operands.
 // Allocation order: caller-saved first (r8-r15), then callee-saved (r16-r31).
 // Putting caller-saved first means the allocator prefers them for short-lived
-// values, reducing the number of callee-saves in the prologue/epilogue.
+// values, reducing the number of callee-saves in the prologue/epilogue.  The
+// architectural registers r0-r7 must also be class members so instructions can
+// name zero/SP/LR, but getReservedRegs() prevents their allocation to virtual
+// registers.
 def GPR : RegisterClass<"MYISA", [i32], 32,
-  // TODO: list every register the allocator may use, in allocation-preference
-  //       order (caller-saved first is conventional). The example lists only
-  //       R8 so the file parses; add the rest once you have defined them above.
-  (add R8 /* TODO: , R9, R10, ... R31 */)>;
+  (add R8, R9, R10, R11, R12, R13, R14, R15,
+       R16, R17, R18, R19, R20, R21, R22, R23,
+       R24, R25, R26, R27, R28, R29, R30, R31,
+       R0, R1, R2, R3, R4, R5, R6, R7)>;
 
 // CREG: Condition register class (r5 only).
 // Used exclusively by CMP/branch instructions. The CMP instruction always

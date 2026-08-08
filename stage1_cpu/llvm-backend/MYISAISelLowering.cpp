@@ -75,6 +75,7 @@
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/IR/Function.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -112,6 +113,23 @@ MYISATargetLowering::MYISATargetLowering(const TargetMachine &TM,
 
   // Tell LLVM which register is the stack pointer (for stack-related opts).
   setStackPointerRegisterToSaveRestore(MYISA::R2);
+
+  // Stage 1 directly supports only integer ADD/SUB and register/immediate
+  // moves. Expand operations which have no instruction yet.
+  setOperationAction(ISD::BR_CC,     MVT::i32, Custom);
+  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
+  setOperationAction(ISD::MUL,       MVT::i32, Expand);
+  setOperationAction(ISD::SDIV,      MVT::i32, Expand);
+  setOperationAction(ISD::UDIV,      MVT::i32, Expand);
+  setOperationAction(ISD::SREM,      MVT::i32, Expand);
+  setOperationAction(ISD::UREM,      MVT::i32, Expand);
+  setOperationAction(ISD::ROTL,      MVT::i32, Expand);
+  setOperationAction(ISD::ROTR,      MVT::i32, Expand);
+  setOperationAction(ISD::BSWAP,     MVT::i32, Expand);
+  setOperationAction(ISD::CTPOP,     MVT::i32, Expand);
+  setOperationAction(ISD::CTLZ,      MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ,      MVT::i32, Expand);
+  setBooleanContents(ZeroOrOneBooleanContent);
 
   // TODO: declare the legality of operations for your ISA. Anything you do NOT
   //       configure here is assumed Legal (i.e. you have a direct instruction
@@ -153,6 +171,19 @@ const char *MYISATargetLowering::getTargetNodeName(unsigned Opcode) const {
   }
 }
 
+EVT MYISATargetLowering::getSetCCResultType(const DataLayout &DL,
+                                             LLVMContext &Context,
+                                             EVT VT) const {
+  // The register file and GPR register class are both 32 bits wide.  Returning
+  // i1 here would leave the SelectionDAG type legalizer with a comparison
+  // result for which MYISA has neither a register class nor a promotion rule.
+  // Scalar comparisons are consequently represented as 0/1 in an i32 GPR.
+  if (!VT.isVector())
+    return MVT::i32;
+
+  return TargetLowering::getSetCCResultType(DL, Context, VT);
+}
+
 //===----------------------------------------------------------------------===//
 // LowerOperation — Dispatch for custom-lowered operations.
 // Called by the legalizer whenever it encounters an operation marked Custom.
@@ -189,20 +220,36 @@ SDValue MYISATargetLowering::LowerOperation(SDValue Op,
 //===----------------------------------------------------------------------===//
 
 SDValue MYISATargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
-  // TODO: lower a generic conditional branch "if (LHS cc RHS) goto Target"
-  //       into your ISA's compare-then-branch idiom.
-  //       The operands of an ISD::BR_CC node are:
-  //         Op.getOperand(0) = chain
-  //         Op.getOperand(1) = condition code (cast<CondCodeSDNode>(...)->get())
-  //         Op.getOperand(2) = LHS,  Op.getOperand(3) = RHS
-  //         Op.getOperand(4) = target basic block
-  //       A common approach: emit a custom CMP node (e.g. MYISAISD::CMP) that
-  //       sets your condition register, then a custom branch node
-  //       (e.g. MYISAISD::BR_CC) carrying the condition code and target.
-  //       If your ISA has no less-or-equal / greater-or-equal branch, rewrite
-  //       SETLE/SETGE into SETLT/SETGT by adjusting the RHS by 1.
-  //       See the Stage 2 tutorial for a worked example.
-  return SDValue();
+  SDLoc DL(Op);
+  SDValue Chain = Op.getOperand(0);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  SDValue Target = Op.getOperand(4);
+
+  // The ISA has strict signed comparisons only. Express <= and >= using a
+  // one-step adjustment so they still select JLT/JGT.
+  if (CC == ISD::SETLE) {
+    RHS = DAG.getNode(ISD::ADD, DL, MVT::i32, RHS,
+                      DAG.getConstant(1, DL, MVT::i32));
+    CC = ISD::SETLT;
+  } else if (CC == ISD::SETGE) {
+    RHS = DAG.getNode(ISD::SUB, DL, MVT::i32, RHS,
+                      DAG.getConstant(1, DL, MVT::i32));
+    CC = ISD::SETGT;
+  }
+
+  if (CC != ISD::SETEQ && CC != ISD::SETNE && CC != ISD::SETLT &&
+      CC != ISD::SETGT)
+    report_fatal_error("MYISA only supports signed EQ/NE/LT/LE/GT/GE branches");
+
+  // CMP is chain-producing so the following conditional branch cannot move
+  // ahead of the condition-register update.
+  SDValue Cmp = DAG.getNode(MYISAISD::CMP, DL, MVT::Other,
+                            {Chain, LHS, RHS});
+  SDValue TargetCC = DAG.getTargetConstant(CC, DL, MVT::i32);
+  return DAG.getNode(MYISAISD::BR_CC, DL, MVT::Other,
+                     {Cmp, TargetCC, Target});
 }
 
 //===----------------------------------------------------------------------===//
@@ -386,14 +433,28 @@ SDValue MYISATargetLowering::LowerCall(
 
   MachineFunction &MF = DAG.getMachineFunction();
 
+  // Turn generic symbol operands into target symbol operands before creating
+  // the target CALL node. The assembly printer will emit the symbol name and
+  // tools/asm.py will resolve it to a PC-relative offset.
+  if (auto *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL,
+                                        Callee.getValueType(), G->getOffset());
+  } else if (auto *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    Callee = DAG.getTargetExternalSymbol(E->getSymbol(),
+                                         Callee.getValueType());
+  }
+
   // Step 1: Analyze outgoing arguments to determine register/stack assignment.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_MYISA);
 
-  // Step 2: Emit CALLSEQ_START to mark the beginning of the outgoing arg area.
+  // Stage 3 supports the eight register arguments defined by CC_MYISA. Stack
+  // arguments need a separate outgoing-argument area design and are rejected
+  // for now rather than silently corrupting the active frame.
   unsigned StackSize = CCInfo.getStackSize();
-  Chain = DAG.getCALLSEQ_START(Chain, StackSize, 0, DL);
+  if (StackSize != 0)
+    report_fatal_error("MYISA currently supports at most eight call arguments");
 
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
   SmallVector<SDValue, 8> MemOpChains;
@@ -453,11 +514,9 @@ SDValue MYISATargetLowering::LowerCall(
   Chain = DAG.getNode(MYISAISD::CALL, DL, NodeTys, Ops);
   InGlue = Chain.getValue(1);
 
-  // Step 6: Emit CALLSEQ_END to mark the end of the outgoing arg area.
-  Chain = DAG.getCALLSEQ_END(Chain, StackSize, 0, InGlue, DL);
-  InGlue = Chain.getValue(1);
-
-  // Step 7: Handle return values — copy from physical register (r8) to vreg.
+  // Handle return values — copy from physical register (r8) to a virtual
+  // value. No CALLSEQ pseudos are needed because there is no outgoing stack
+  // argument area for the supported register-only calls.
   SmallVector<CCValAssign, 16> RVLocs;
   CCState RVInfo(CallConv, IsVarArg, MF, RVLocs, *DAG.getContext());
   RVInfo.AnalyzeCallResult(Ins, RetCC_MYISA);

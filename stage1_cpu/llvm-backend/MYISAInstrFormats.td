@@ -135,6 +135,95 @@ class Type1RRR<bits<14> op, string mnemonic, dag outs, dag ins,
   let arg1{4-0}= rs1;             // Wire $rs1 to the arg1 value bits
 }
 
+// Two-operand Type 1 format used by MOV. arg2 is unused and encoded as zero.
+class Type1RR<bits<14> op, string mnemonic, dag outs, dag ins,
+              string asmstr, list<dag> pattern>
+    : Type1Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rd;
+  bits<5> rs;
+  let result = rd;
+  let arg1 = {0, rs};
+  let arg2 = 0;
+}
+
+// Type 2: [31]=0, [30:22]=opcode, [21]=register/immediate selector,
+// [20:16]=register, [15:0]=address or immediate.
+class Type2Inst<bits<9> op, dag outs, dag ins, string asmstr,
+                list<dag> pattern> : Instruction {
+  let Namespace = "MYISA";
+  let Size = 4;
+  field bits<32> Inst;
+  field bits<32> SoftFail = 0;
+  let Inst{31} = 0;
+  bits<9> Opcode = op;
+  let Inst{30-22} = Opcode;
+  bit ri = 0;
+  bits<5> reg = 0;
+  bits<16> addr = 0;
+  let Inst{21} = ri;
+  let Inst{20-16} = reg;
+  let Inst{15-0} = addr;
+  dag OutOperandList = outs;
+  dag InOperandList = ins;
+  let AsmString = asmstr;
+  let Pattern = pattern;
+}
+
+class Type2LI<bits<9> op, dag outs, dag ins, string asmstr,
+              list<dag> pattern> : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rd;
+  bits<16> imm;
+  let ri = 1;
+  let reg = rd;
+  let addr = imm;
+}
+
+class Type2Simple<bits<9> op, string asmstr, list<dag> pattern>
+    : Type2Inst<op, (outs), (ins), asmstr, pattern>;
+
+// Type 2 branch/call target. Targets are emitted as labels by the assembly
+// printer and resolved to signed PC-relative offsets by tools/asm.py.
+class Type2Target<bits<9> op, dag outs, dag ins, string asmstr,
+                  list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<16> target;
+  let ri = 0;
+  let reg = 0;
+  let addr = target;
+}
+
+// Type 2 stack operation. The register is encoded in [20:16].
+class Type2Stack<bits<9> op, dag outs, dag ins, string asmstr,
+                 list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> stackreg;
+  let ri = 0;
+  let reg = stackreg;
+  let addr = 0;
+}
+
+// LOAD/STORE carry a data register plus a composite base+offset operand.
+// The external Python assembler encodes non-absolute memory operands as
+// implicit-SP-relative, so only the data register is represented in Inst;
+// the printed offset is encoded by tools/asm.py.
+class Type2Load<bits<9> op, dag outs, dag ins, string asmstr,
+                list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rd;
+  let ri = 0;
+  let reg = rd;
+  let addr = 0;
+}
+
+class Type2Store<bits<9> op, dag outs, dag ins, string asmstr,
+                 list<dag> pattern>
+    : Type2Inst<op, outs, ins, asmstr, pattern> {
+  bits<5> rs;
+  let ri = 0;
+  let reg = rs;
+  let addr = 0;
+}
+
 // Type1RRR above is a complete WORKED EXAMPLE of an instruction format class:
 // it inherits the base encoding and binds the DAG operands ($rd, $rs1, ...)
 // to specific bit fields. Use it as a model for every other format your ISA

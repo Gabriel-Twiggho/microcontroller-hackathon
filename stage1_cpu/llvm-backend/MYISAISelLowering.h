@@ -83,6 +83,13 @@ public:
   // Returns a human-readable name for custom node types (for debug dumps).
   const char *getTargetNodeName(unsigned Opcode) const override;
 
+  // MYISA has no 1-bit registers.  Comparisons therefore produce a full
+  // 32-bit zero/one value when LLVM needs the result as data.  This also lets
+  // the type legalizer form BR_CC nodes without trying (and failing) to
+  // promote an unsupported i1 value after DAG construction.
+  EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
+                         EVT VT) const override;
+
   // Dispatch function for custom-lowered operations. Called by the legalizer
   // when it encounters an operation marked "Custom" in the constructor.
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;

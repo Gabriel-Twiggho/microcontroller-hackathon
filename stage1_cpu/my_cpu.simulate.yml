@@ -12,7 +12,7 @@ simulate:
 
   # Standalone hex produced by compile.py (includes the _start stub).
   # The startup stub is baked in by compile.py — no startup: section needed.
-  program: ./build/test_add.hex
+  program: ./build/compile/program.hex
 
   rtl:
     base-dir: ./rtl          # base directory for the files listed below
@@ -20,7 +20,9 @@ simulate:
       - alu.v
       - regfile.v
       - imem.v
+      - dmem.v
       - decoder.v
+      - branch.v
       - cpu.v
       - tb.v
                              # The testbench must follow two conventions so
@@ -34,8 +36,10 @@ simulate:
   # Expected register values after the simulation halts.
   # TODO: set these to match your test program's result.
   verify:
-    - register: r10
-      value: 69
+    - register: r8
+      value: 188
+    - register: r2
+      value: 31744
 
   options:
     max-cycles: 100000       # safety limit (halt if the CPU never reaches HALT)

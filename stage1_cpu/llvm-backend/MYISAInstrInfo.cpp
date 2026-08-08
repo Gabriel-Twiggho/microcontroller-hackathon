@@ -53,6 +53,7 @@
 #include "MYISASubtarget.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
+#include "llvm/Support/ErrorHandling.h"
 
 // Include the auto-generated constructor and destructor for MYISAGenInstrInfo.
 // This provides the instruction descriptor tables, operand info, etc.
@@ -92,9 +93,6 @@ void MYISAInstrInfo::storeRegToStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
 
-  // Emit: STORE_reg SrcReg, [FrameIndex + 0]
-  // The two operands after SrcReg are the memsrc composite: (base, offset)
-  // FrameIndex becomes the base, 0 is the offset.
   BuildMI(MBB, MI, DL, get(MYISA::STORE_reg))
       .addReg(SrcReg, getKillRegState(isKill))
       .addFrameIndex(FrameIndex)
@@ -111,7 +109,6 @@ void MYISAInstrInfo::loadRegFromStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
 
-  // Emit: LOAD_reg DestReg, [FrameIndex + 0]
   BuildMI(MBB, MI, DL, get(MYISA::LOAD_reg), DestReg)
       .addFrameIndex(FrameIndex)
       .addImm(0);

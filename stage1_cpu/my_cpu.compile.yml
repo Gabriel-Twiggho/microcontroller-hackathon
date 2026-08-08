@@ -10,7 +10,7 @@ compile:
   output-dir: ./build/compile
 
   compiler:
-    install-dir: /llvm-build  # use the locally rebuilt LLVM with your target
+    install-dir: /opt/llvm  # use the locally rebuilt LLVM with your target
     target: myisa             # your backend's -march name (lower-case)
     misc:                     # extra clang flags (IR generation stage)
       - -O1
@@ -38,4 +38,4 @@ compile:
   groups:
     - group: Tests
       files:
-        - file: ./tests/test_sim.c
+        - file: ./tests/test_fib.c

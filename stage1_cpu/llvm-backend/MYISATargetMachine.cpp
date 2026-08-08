@@ -78,7 +78,11 @@ static std::string computeDataLayout() {
   //       Format reference: https://llvm.org/docs/LangRef.html#data-layout
   //       Example (little-endian, 32-bit pointers/ints, 32-bit native+stack):
   //         return "e-p:32:32-i32:32-n32-S32";
-  return ""; // TODO: replace with your data-layout string
+  // Pointer values live in the same 32-bit GPRs as integer values.  The
+  // physical instruction/data memories remain 16-bit addressed; that limit is
+  // enforced by the instruction encodings and assembler fixups, not by making
+  // LLVM create an illegal i16 pointer value with no register class.
+  return "e-p:32:32-i32:32-n32-S32";
 }
 
 // MYISATargetMachine constructor

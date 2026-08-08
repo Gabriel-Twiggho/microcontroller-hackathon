@@ -6,10 +6,15 @@ module regfile (
     input  wire                    wr_en,
     input  wire [`REG_ADDR_W-1:0]  wr_addr,
     input  wire [`DATA_MSB:0]      wr_data,
+    input  wire                    sp_wr_en,
+    input  wire [`DATA_MSB:0]      sp_wr_data,
     input  wire [`REG_ADDR_W-1:0]  rd_addr_a,
     input  wire [`REG_ADDR_W-1:0]  rd_addr_b,
     output wire [`DATA_MSB:0]      rd_data_a,
-    output wire [`DATA_MSB:0]      rd_data_b
+    output wire [`DATA_MSB:0]      rd_data_b,
+    output wire [`DATA_MSB:0]      sp_data,
+    output wire [`DATA_MSB:0]      link_data,
+    output wire [`DATA_MSB:0]      condition_data
 );
     // The testbench reads this array through u_regfile.regs.
     reg [`DATA_MSB:0] regs [0:`REG_COUNT-1];
@@ -20,6 +25,9 @@ module regfile (
                                          : regs[rd_addr_a];
     assign rd_data_b = (rd_addr_b == 0) ? {`DATA_WIDTH{1'b0}}
                                          : regs[rd_addr_b];
+    assign sp_data = regs[2];
+    assign link_data = regs[3];
+    assign condition_data = regs[5];
 
     // One synchronous write port. Writes to r0 are discarded.
     always @(posedge clk or negedge rst_n) begin
@@ -29,5 +37,10 @@ module regfile (
         end else if (wr_en && wr_addr != 0) begin
             regs[wr_addr] <= wr_data;
         end
+
+        // PUSH/POP may update SP in the same cycle that POP writes another
+        // register, so SP has a dedicated write path.
+        if (rst_n && sp_wr_en)
+            regs[2] <= sp_wr_data;
     end
 endmodule

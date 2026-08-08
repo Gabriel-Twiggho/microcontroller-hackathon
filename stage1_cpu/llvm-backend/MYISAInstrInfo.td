@@ -90,7 +90,7 @@ def brtarget16 : Operand<OtherVT> {
 // calltarget: 16-bit call target address.
 // Similar to brtarget16 but used specifically by CALL instructions.
 // May be absolute or PC-relative depending on the ri flag.
-def calltarget : Operand<i32> {
+def calltarget : Operand<OtherVT> {
   let EncoderMethod = "encodeBranchTarget";
 }
 
@@ -166,7 +166,10 @@ def callseq_end   : SDNode<"ISD::CALLSEQ_END",   SDT_MYISACallSeqEnd,
 def ADD_rrr : Type1RRR<0x0000, "ADD",
   (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
   "ADD\t$rd, $rs1, $rs2",
-  [(set GPR:$rd, (add GPR:$rs1, GPR:$rs2))]>;
+  [(set GPR:$rd, (add GPR:$rs1, GPR:$rs2))]> {
+  bits<5> rs2;
+  let arg2 = {0, rs2};
+}
 
 // ADD rd, rs1, #imm5 — Integer addition (register + 5-bit immediate)
 // C equivalent: rd = rs1 + imm (where 0 ≤ imm ≤ 31)
@@ -177,6 +180,82 @@ def ADD_rri : Type1RRR<0x0000, "ADD",
   [(set GPR:$rd, (add GPR:$rs1, imm5:$imm))]> {
   bits<5> imm;
   let arg2 = {1, imm};   // flag=1 (literal), value=imm
+}
+
+def SUB_rrr : Type1RRR<0x0001, "SUB",
+  (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
+  "SUB\t$rd, $rs1, $rs2",
+  [(set GPR:$rd, (sub GPR:$rs1, GPR:$rs2))]> {
+  bits<5> rs2;
+  let arg2 = {0, rs2};
+}
+
+def SUB_rri : Type1RRR<0x0001, "SUB",
+  (outs GPR:$rd), (ins GPR:$rs1, imm5:$imm),
+  "SUB\t$rd, $rs1, #$imm",
+  [(set GPR:$rd, (sub GPR:$rs1, imm5:$imm))]> {
+  bits<5> imm;
+  let arg2 = {1, imm};
+}
+
+// Constant-materialisation forms used internally by the selector.  They are
+// ordinary SUB instructions in the generated assembly and require no new RTL
+// opcode.  R0 is encoded implicitly because it is the architectural zero
+// register and is intentionally not part of the allocatable GPR class.
+def LI_NEG_ri : Type1Inst<0x0001,
+  (outs GPR:$rd), (ins imm5:$imm),
+  "SUB\t$rd, r0, #$imm", []> {
+  bits<5> rd;
+  bits<5> imm;
+  let result = rd;
+  let arg1 = 0;
+  let arg2 = {1, imm};
+}
+
+def LI_NEG_rr : Type1Inst<0x0001,
+  (outs GPR:$rd), (ins GPR:$magnitude),
+  "SUB\t$rd, r0, $magnitude", []> {
+  bits<5> rd;
+  bits<5> magnitude;
+  let result = rd;
+  let arg1 = 0;
+  let arg2 = {0, magnitude};
+}
+
+def MOV_rr : Type1RR<0x000f, "MOV",
+  (outs GPR:$rd), (ins GPR:$rs),
+  "MOV\t$rd, $rs", []>;
+
+def LI : Type2LI<0x00d,
+  (outs GPR:$rd), (ins imm16u:$imm),
+  "LI\t$rd, #$imm",
+  [(set GPR:$rd, imm16u:$imm)]>;
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1, Uses = [R3] in
+def RET : Type2Simple<0x00a, "RET", [(retflag)]>;
+
+// CMP writes rs1-rs2 into the dedicated condition register r5. The result is
+// an implicit definition because CREG is not a normal program value.
+let Defs = [R5] in {
+  def CMP_rr : Type1Inst<0x000d,
+    (outs), (ins GPR:$rs1, GPR:$rs2),
+    "CMP\tr5, $rs1, $rs2", []> {
+    bits<5> rs1;
+    bits<5> rs2;
+    let result = 5;
+    let arg1 = {0, rs1};
+    let arg2 = {0, rs2};
+  }
+
+  def CMP_ri : Type1Inst<0x000d,
+    (outs), (ins GPR:$rs1, imm5:$imm),
+    "CMP\tr5, $rs1, #$imm", []> {
+    bits<5> rs1;
+    bits<5> imm;
+    let result = 5;
+    let arg1 = {0, rs1};
+    let arg2 = {1, imm};
+  }
 }
 
 // ADD_rrr and ADD_rri above are a complete WORKED EXAMPLE showing the two
@@ -203,8 +282,8 @@ def ADD_rri : Type1RRR<0x0000, "ADD",
 //===----------------------------------------------------------------------===//
 // Type 2 — Memory, Branch, Call and Stack Instructions
 //
-// TODO: define your memory-access, control-flow, call/return and stack
-//       instructions here. Follow the same style as the ADD example above:
+// Memory-access, control-flow, call/return and stack instructions are defined
+// below. They follow the same style as the ADD example above:
 //       give each a format base class, an assembly string, and (where the
 //       compiler should pattern-match it) a `[(set ...)]` / `[(...)]` pattern.
 //
@@ -230,6 +309,46 @@ def ADD_rri : Type1RRR<0x0000, "ADD",
 //       on returns, Defs/Uses of the link and stack-pointer registers, etc.).
 //       See the Stage 2–3 tutorials for a worked example.
 //===----------------------------------------------------------------------===//
+
+let mayLoad = 1, Uses = [R2] in
+def LOAD_reg : Type2Load<0x000,
+  (outs GPR:$rd), (ins memsrc:$src),
+  "LOAD\t$rd, $src",
+  [(set GPR:$rd, (load addr:$src))]>;
+
+let mayStore = 1, Uses = [R2] in
+def STORE_reg : Type2Store<0x001,
+  (outs), (ins GPR:$rs, memsrc:$dst),
+  "STORE\t$rs, $dst",
+  [(store GPR:$rs, addr:$dst)]>;
+
+let isBranch = 1, isTerminator = 1, isBarrier = 1 in
+def JMP : Type2Target<0x004,
+  (outs), (ins brtarget16:$target),
+  "JMP\t$target", [(br bb:$target)]>;
+
+let isBranch = 1, isTerminator = 1, Uses = [R5] in {
+  def JZ  : Type2Target<0x005, (outs), (ins brtarget16:$target),
+                       "JZ\t$target", []>;
+  def JNZ : Type2Target<0x006, (outs), (ins brtarget16:$target),
+                       "JNZ\t$target", []>;
+  def JLT : Type2Target<0x007, (outs), (ins brtarget16:$target),
+                       "JLT\t$target", []>;
+  def JGT : Type2Target<0x008, (outs), (ins brtarget16:$target),
+                       "JGT\t$target", []>;
+}
+
+let isCall = 1, Defs = [R3] in
+def CALL : Type2Target<0x009,
+  (outs), (ins calltarget:$target, variable_ops), "CALL\t$target", []>;
+
+let mayStore = 1, Defs = [R2], Uses = [R2] in
+def PUSH : Type2Stack<0x00b,
+  (outs), (ins GPR:$stackreg), "PUSH\t$stackreg", []>;
+
+let mayLoad = 1, Defs = [R2], Uses = [R2] in
+def POP : Type2Stack<0x00c,
+  (outs GPR:$stackreg), (ins), "POP\t$stackreg", []>;
 
 //===----------------------------------------------------------------------===//
 // Pseudo-instructions (expanded during lowering, not encoded)

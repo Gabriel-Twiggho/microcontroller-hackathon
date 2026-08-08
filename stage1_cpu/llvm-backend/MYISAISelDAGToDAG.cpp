@@ -66,6 +66,7 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -135,25 +136,115 @@ void MYISADAGToDAGISel::Select(SDNode *N) {
   default:
     break;  // Fall through to SelectCode() for TableGen pattern matching
 
-  // TODO: handle the DAG nodes that need custom C++ selection (i.e. anything
-  //       that cannot be expressed as a simple TableGen pattern in the .td).
-  //       For each case, build the machine instruction(s) with
-  //       CurDAG->getMachineNode(...) and finish with ReplaceNode(N, ...);
-  //       then `return;`. Cases you typically need to implement:
-  //
-  //         case ISD::Constant:   materialise an integer constant using the
-  //             cheapest sequence your ISA can encode (small immediate, load-
-  //             immediate, load-upper + or, negate, ...).
-  //         case ISD::CALLSEQ_START / ISD::CALLSEQ_END:  emit your
-  //             ADJCALLSTACKDOWN / ADJCALLSTACKUP pseudos (these usually must
-  //             be selected by hand because of their {chain, glue} result).
-  //         case <YourISD>::CALL:  repack the call operands into machine form.
-  //         case <YourISD>::CMP:   pick the register vs. immediate compare.
-  //         case <YourISD>::BR_CC: map the LLVM condition code onto your
-  //             conditional-branch opcodes (JZ/JNZ/JLT/JGT or equivalents).
-  //
-  //       You may also add peephole cases (e.g. rewrite ADD(x, -k) into a
-  //       SUB) here. The Stage 2–3 tutorials walk through each case above.
+  case ISD::Constant: {
+    auto *C = cast<ConstantSDNode>(N);
+    int64_t Value = C->getSExtValue();
+
+    // Non-negative 16-bit constants are handled by the LI TableGen pattern.
+    if (Value >= 0 && Value <= 65535)
+      break;
+
+    // Materialise signed negative constants using the architectural zero
+    // register.  Small magnitudes fit directly in SUB's five-bit immediate;
+    // larger signed-16 magnitudes first use LI and then register SUB.
+    if (Value < 0 && Value >= -65535) {
+      SDLoc DL(N);
+      uint64_t Magnitude = static_cast<uint64_t>(-Value);
+      SDNode *Result;
+
+      if (Magnitude <= 31) {
+        SDValue Imm =
+            CurDAG->getTargetConstant(Magnitude, DL, MVT::i32);
+        Result = CurDAG->getMachineNode(MYISA::LI_NEG_ri, DL, MVT::i32,
+                                        Imm);
+      } else {
+        SDValue Imm =
+            CurDAG->getTargetConstant(Magnitude, DL, MVT::i32);
+        SDNode *Positive =
+            CurDAG->getMachineNode(MYISA::LI, DL, MVT::i32, Imm);
+        Result = CurDAG->getMachineNode(MYISA::LI_NEG_rr, DL, MVT::i32,
+                                        SDValue(Positive, 0));
+      }
+
+      ReplaceNode(N, Result);
+      return;
+    }
+
+    report_fatal_error(
+        "MYISA cannot materialise constants outside signed/unsigned 16-bit range");
+  }
+
+  case MYISAISD::CMP: {
+    SDLoc DL(N);
+    SDValue Chain = N->getOperand(0);
+    SDValue LHS = N->getOperand(1);
+    SDValue RHS = N->getOperand(2);
+    unsigned Opcode = MYISA::CMP_rr;
+    SmallVector<SDValue, 3> Ops;
+    Ops.push_back(LHS);
+
+    if (auto *C = dyn_cast<ConstantSDNode>(RHS)) {
+      int64_t Value = C->getSExtValue();
+      if (Value >= 0 && Value <= 31) {
+        Opcode = MYISA::CMP_ri;
+        Ops.push_back(CurDAG->getTargetConstant(Value, DL, MVT::i32));
+      } else {
+        Ops.push_back(RHS);
+      }
+    } else {
+      Ops.push_back(RHS);
+    }
+    Ops.push_back(Chain);
+
+    SDNode *Result = CurDAG->getMachineNode(Opcode, DL, MVT::Other, Ops);
+    ReplaceNode(N, Result);
+    return;
+  }
+
+  case MYISAISD::BR_CC: {
+    SDLoc DL(N);
+    SDValue Chain = N->getOperand(0);
+    ISD::CondCode CC = static_cast<ISD::CondCode>(
+        cast<ConstantSDNode>(N->getOperand(1))->getZExtValue());
+    SDValue Target = N->getOperand(2);
+    unsigned Opcode;
+
+    switch (CC) {
+    case ISD::SETEQ: Opcode = MYISA::JZ; break;
+    case ISD::SETNE: Opcode = MYISA::JNZ; break;
+    case ISD::SETLT: Opcode = MYISA::JLT; break;
+    case ISD::SETGT: Opcode = MYISA::JGT; break;
+    default: report_fatal_error("Unsupported MYISA branch condition");
+    }
+
+    SDValue Ops[] = {Target, Chain};
+    SDNode *Result = CurDAG->getMachineNode(Opcode, DL, MVT::Other, Ops);
+    ReplaceNode(N, Result);
+    return;
+  }
+
+  case MYISAISD::CALL: {
+    SDLoc DL(N);
+    SmallVector<SDValue, 12> Ops;
+
+    // Machine CALL order: target, variadic register uses/mask, chain, glue.
+    Ops.push_back(N->getOperand(1));
+    SDValue Glue;
+    for (unsigned I = 2; I < N->getNumOperands(); ++I) {
+      if (N->getOperand(I).getValueType() == MVT::Glue)
+        Glue = N->getOperand(I);
+      else
+        Ops.push_back(N->getOperand(I));
+    }
+    Ops.push_back(N->getOperand(0));
+    if (Glue.getNode())
+      Ops.push_back(Glue);
+
+    SDVTList VTs = CurDAG->getVTList(MVT::Other, MVT::Glue);
+    SDNode *Result = CurDAG->getMachineNode(MYISA::CALL, DL, VTs, Ops);
+    ReplaceNode(N, Result);
+    return;
+  }
   }
 
   // No custom match — try TableGen-generated patterns (SelectCode).
@@ -185,6 +276,17 @@ bool MYISADAGToDAGISel::SelectAddr(SDValue Addr, SDValue &Base,
     Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), MVT::i32);
     Offset = CurDAG->getTargetConstant(0, SDLoc(Addr), MVT::i32);
     return true;
+  }
+
+  if (Addr.getOpcode() == ISD::ADD) {
+    if (auto *C = dyn_cast<ConstantSDNode>(Addr.getOperand(1))) {
+      int64_t Value = C->getSExtValue();
+      if (Value >= -32768 && Value <= 32767) {
+        Base = Addr.getOperand(0);
+        Offset = CurDAG->getTargetConstant(Value, SDLoc(Addr), MVT::i32);
+        return true;
+      }
+    }
   }
 
   // TODO: recognise richer addressing modes so the compiler can fold address

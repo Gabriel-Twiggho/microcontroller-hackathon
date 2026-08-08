@@ -61,6 +61,7 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/Support/ErrorHandling.h"
 
 // Include the auto-generated register info implementation tables.
 // Contains: register encoding arrays, register class membership, sub-reg info.
@@ -153,6 +154,8 @@ bool MYISARegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
 
   // Calculate the SP-relative offset
   int Offset = MFI.getObjectOffset(FrameIndex) + (int)MFI.getStackSize() + SPAdj;
+  if (Offset < -32768 || Offset > 32767)
+    report_fatal_error("MYISA stack-frame offset exceeds signed 16-bit range");
 
   // Replace the frame index operand with the base register (SP = R2)
   Register BaseReg = MYISA::R2;

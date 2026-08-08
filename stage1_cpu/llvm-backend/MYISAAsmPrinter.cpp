@@ -128,7 +128,11 @@ void MYISAAsmPrinter::emitInstruction(const MachineInstr *MI) {
     // Skip implicit operands (Defs=[R5], Uses=[R2], etc. from .td file).
     // These are tracked at the MachineInstr level for register allocation
     // but don't appear in the MCInst or encoded instruction.
-    if (MO.isImplicit())
+    // MachineOperand::isImplicit() is only meaningful for register operands.
+    // Reading it for immediates or symbol/MBB operands consults a flag field
+    // that is not valid for those operand kinds, which caused nondeterministic
+    // omission of constants and branch labels from the emitted MCInst.
+    if (MO.isReg() && MO.isImplicit())
       continue;
 
     switch (MO.getType()) {
@@ -152,6 +156,12 @@ void MYISAAsmPrinter::emitInstruction(const MachineInstr *MI) {
       // Global variable reference → MCOperand expression (symbol ref)
       TmpInst.addOperand(MCOperand::createExpr(
           MCSymbolRefExpr::create(getSymbol(MO.getGlobal()), OutContext)));
+      break;
+
+    case MachineOperand::MO_ExternalSymbol:
+      // Direct calls to externally-visible symbols use this operand kind.
+      TmpInst.addOperand(MCOperand::createExpr(MCSymbolRefExpr::create(
+          GetExternalSymbolSymbol(MO.getSymbolName()), OutContext)));
       break;
 
     default:

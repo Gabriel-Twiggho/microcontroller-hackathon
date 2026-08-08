@@ -64,6 +64,8 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/Support/ErrorHandling.h"
+#include <algorithm>
 
 using namespace llvm;
 
@@ -98,18 +100,31 @@ void MYISAFrameLowering::emitPrologue(MachineFunction &MF,
   if (MBBI != MBB.end())
     DL = MBBI->getDebugLoc();
 
-  // TODO: emit your function prologue. Use BuildMI(MBB, MBBI, DL, TII.get(...))
-  //       with the FrameSetup flag. A typical prologue does, in order:
-  //         1. Save the link/return-address register if this function calls
-  //            others: if (MF.getFrameInfo().hasCalls()) PUSH the LR.
-  //         2. Save each callee-saved register the function uses:
-  //            for (auto &E : MFI.getCalleeSavedInfo()) PUSH E.getReg().
-  //         3. If hasFP(MF), set the frame pointer to the current SP.
-  //         4. Allocate locals by subtracting MFI.getStackSize() from SP
-  //            (loop in chunks if your immediate field is narrow).
-  //       See the Stage 3 tutorial for a worked example.
-  (void)TII;
-  (void)MFI;
+  if (hasFP(MF))
+    report_fatal_error("MYISA does not support variable-sized stack frames");
+
+  // A non-leaf function must preserve the link register before its first
+  // nested CALL. The POP in the epilogue restores the caller's return address.
+  if (MFI.hasCalls()) {
+    MachineInstrBuilder PushLR =
+        BuildMI(MBB, MBBI, DL, TII.get(MYISA::PUSH)).addReg(MYISA::R3);
+    PushLR.setMIFlag(MachineInstr::FrameSetup);
+  }
+
+  // LLVM creates spill slots for used callee-saved registers and emits the
+  // STORE_reg instructions through MYISAInstrInfo. Allocate the complete
+  // frame before those stores execute. The Type 1 immediate is only 5 bits,
+  // so large frames are adjusted in chunks of at most 31 bytes.
+  uint64_t Remaining = MFI.getStackSize();
+  while (Remaining != 0) {
+    unsigned Chunk = static_cast<unsigned>(std::min<uint64_t>(Remaining, 31));
+    MachineInstrBuilder Adjust =
+        BuildMI(MBB, MBBI, DL, TII.get(MYISA::SUB_rri), MYISA::R2)
+            .addReg(MYISA::R2)
+            .addImm(Chunk);
+    Adjust.setMIFlag(MachineInstr::FrameSetup);
+    Remaining -= Chunk;
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -127,16 +142,27 @@ void MYISAFrameLowering::emitEpilogue(MachineFunction &MF,
   if (MBBI != MBB.end())
     DL = MBBI->getDebugLoc();
 
-  // TODO: emit your function epilogue — the mirror image of the prologue, in
-  //       reverse order, using the FrameDestroy flag. A typical epilogue does:
-  //         1. Deallocate locals: restore SP from the frame pointer (if
-  //            hasFP(MF)) or add MFI.getStackSize() back to SP.
-  //         2. Restore callee-saved registers in REVERSE order (iterate
-  //            MFI.getCalleeSavedInfo() backwards and POP each).
-  //         3. Restore the link/return-address register if it was saved.
-  //       The RET instruction that follows returns control to the caller.
-  (void)TII;
-  (void)MFI;
+  if (hasFP(MF))
+    report_fatal_error("MYISA does not support variable-sized stack frames");
+
+  // Callee-saved reloads inserted by LLVM occur before this point while SP
+  // still addresses the active frame. Release that frame in 5-bit chunks.
+  uint64_t Remaining = MFI.getStackSize();
+  while (Remaining != 0) {
+    unsigned Chunk = static_cast<unsigned>(std::min<uint64_t>(Remaining, 31));
+    MachineInstrBuilder Adjust =
+        BuildMI(MBB, MBBI, DL, TII.get(MYISA::ADD_rri), MYISA::R2)
+            .addReg(MYISA::R2)
+            .addImm(Chunk);
+    Adjust.setMIFlag(MachineInstr::FrameDestroy);
+    Remaining -= Chunk;
+  }
+
+  if (MFI.hasCalls()) {
+    MachineInstrBuilder PopLR =
+        BuildMI(MBB, MBBI, DL, TII.get(MYISA::POP), MYISA::R3);
+    PopLR.setMIFlag(MachineInstr::FrameDestroy);
+  }
 }
 
 //===----------------------------------------------------------------------===//
