@@ -27,7 +27,7 @@ flag is set, the corresponding five-bit field is an unsigned immediate
 
 `[31]=0 | [30:22] opcode | [21] mode | [20:16] reg | [15:0] payload`
 
-`mode` is operation-specific. `payload` is a signed 16-bit value for `LI` and
+`mode` is operation-specific. `payload` is unsigned for `LI` and signed for
 PC-relative `JMP`; it is an unsigned 16-bit absolute address for `LOAD`,
 and `STORE`; it is an instruction address for absolute `JMP`.
 
@@ -37,12 +37,12 @@ and `STORE`; it is an instruction address for absolute `JMP`.
 | --- | ---: | --- | --- |
 | `ADD` | Type 1 `0x0000` | `ADD rd, a, b` | `rd = a + b`; combines PID terms. |
 | `SUB` | Type 1 `0x0001` | `SUB rd, a, b` | `rd = a - b`; computes error and derivative. |
-| `MUL` | Type 1 `0x0002` | `MUL rd, a, b` | `rd = a * b` (low 32 bits); applies PID gains. |
-| `LI` | Type 2 `0x003` | `LI rd, #imm16` | `rd = sign_extend(imm16)`; loads constants and gains. |
+| `MUL` | Type 1 `0x000E` | `MUL rd, a, b` | `rd = a * b` (low 32 bits); applies PID gains. |
+| `LI` | Type 2 `0x00D` | `LI rd, #imm16` | `rd = zero_extend(imm16)`; loads constants and gains. |
 | `LOAD` | Type 2 `0x000` | `LOAD rd, [#address]` | Load the aligned 32-bit word at byte `address`. |
 | `STORE` | Type 2 `0x001` | `STORE rs, [#address]` | Store `rs` as the aligned 32-bit word at byte `address`. |
-| `JMP` | Type 2 `0x002` | `JMP label` / `JMP #address` | Relative target when `mode=0`; absolute target when `mode=1`. |
-| `HALT` | Type 2 `0x004` | `HALT` | Stops the CPU for simulation/testing. |
+| `JMP` | Type 2 `0x004` | `JMP label` / `JMP #address` | Relative target when `mode=0`; absolute target when `mode=1`. |
+| `HALT` | Pseudo | `HALT` | Encodes a relative `JMP 0` (jump to self) for testing. |
 
 `NOP` is retained as an assembler pseudo-instruction for `ADD r0, r0, r0`.
 

@@ -85,18 +85,21 @@ module decoder (
                     halt = 1'b0;
                 end
                 `T2_JMP: begin
-                    jump = 1'b1;
-                    halt = 1'b0;
+                    // The supplied assembler represents HALT as a relative
+                    // JMP with an offset of zero (jump to self).
+                    if (!instruction[21] && instruction[15:0] == 16'h0000) begin
+                        halt = 1'b1;
+                    end else begin
+                        jump = 1'b1;
+                        halt = 1'b0;
+                    end
                 end
                 `T2_LI: begin
-                    immediate_a = {{(`DATA_WIDTH-16){instruction[15]}},
+                    immediate_a = {{(`DATA_WIDTH-16){1'b0}},
                                    instruction[15:0]};
                     register_write = 1'b1;
                     write_immediate = 1'b1;
                     halt = 1'b0;
-                end
-                `T2_HALT: begin
-                    halt = 1'b1;
                 end
                 default: begin end
             endcase

@@ -19,14 +19,19 @@ Assembly syntax (the example config supports these forms):
     label:
     ADD  rd, rs1, rs2          ; Type 1 reg-reg
     ADD  rd, rs1, #imm         ; Type 1 reg-imm
-    MUL  rd, rs1, rs2          ; Type 1 reg-reg or reg-immediate
-    LI   rd, #imm16            ; Load signed 16-bit immediate
+    NOT  rd, rs1               ; Type 1 single-operand
+    LUI  rd, #imm              ; Load upper immediate
+    LI   rd, #imm16            ; Load 16-bit immediate (zero-extended)
     LOAD rd, [addr]            ; Type 2 absolute
     STORE rs, [addr]           ; Type 2 absolute
     JMP  label                 ; PC-relative branch
     JMP  #addr                 ; Absolute branch
+    CALL label                 ; PC-relative call
+    RET                        ; Return
+    PUSH rs                    ; Push register
+    POP  rd                    ; Pop register
     NOP                        ; No operation
-    HALT                       ; Stop execution
+    HALT                       ; JMP to self (pseudo)
 """
 
 import sys
@@ -118,7 +123,8 @@ def assemble_line(line, pc, labels):
     if mnemonic == 'NOP':
         return encode_type1(T1_OPS['ADD'], 0, 0, 0, 0, 0)
     if mnemonic == 'HALT':
-        return encode_type2(T2_OPS['HALT'], 0, 0, 0)
+        # JMP to self (PC-relative offset 0)
+        return encode_type2(T2_OPS['JMP'], 0, 0, 0)
 
     # --- Type 1 ---
     if mnemonic in T1_OPS:
@@ -181,6 +187,13 @@ def assemble_line(line, pc, labels):
             imm16 = parse_imm(tokens[2])
             return encode_type2(opcode9, 1, reg, imm16 & TYPE2_ADDR_MASK)
 
+        if mnemonic == 'RET':
+            return encode_type2(opcode9, 0, 0, 0)
+
+        if mnemonic in ('PUSH', 'POP'):
+            reg = parse_reg(tokens[1])
+            return encode_type2(opcode9, 0, reg, 0)
+
         if mnemonic in BRANCH_OPS:
             target = tokens[1]
             # Check if it's a label
@@ -200,15 +213,23 @@ def assemble_line(line, pc, labels):
             # Reconstruct the address operand (tokenizer may have split it on
             # spaces inside brackets, e.g. [r30 + -8] → ['[r30', '+', '-8]']).
             mem_str = "".join(tokens[2:]).strip("[]")
-            # This initial format has no base-register field. Keep memory
-            # accesses absolute until a future format adds indirect addressing.
+            # Register-indirect: [rN], [rN+offset], [rN + offset], [rN + -N]
             ri_m = re.match(
                 r'^(r\d{1,2}|sp|lr)(.*)?$', mem_str.replace(' ', ''),
                 re.IGNORECASE)
             if ri_m and not mem_str.lstrip().startswith('#'):
-                raise ValueError(
-                    "PID_Basic LOAD/STORE currently require an absolute "
-                    "address such as [#0x0100]")
+                base_reg_str = ri_m.group(1)
+                # Verify it really is a register, not a label starting with 'r'
+                try:
+                    base_reg = parse_reg(base_reg_str)
+                except ValueError:
+                    pass
+                else:
+                    offset_str = ri_m.group(2) or ''
+                    # Normalise LLVM-style '+-N' → '-N'
+                    offset_str = re.sub(r'^\+-', '-', offset_str)
+                    offset = int(offset_str) if offset_str else 0
+                    return encode_type2(opcode9, 0, reg, offset & TYPE2_ADDR_MASK)
             # Absolute: [#addr], [addr], [label]
             if mem_str.startswith('#'):
                 addr16 = parse_imm(mem_str)
