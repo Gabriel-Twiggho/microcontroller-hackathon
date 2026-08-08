@@ -1,0 +1,10 @@
+build-compiler:
+  llvm:
+    src-dir: ""
+    build-dir: ""
+    install-dir: ""
+    jobs: 0
+    verify: true
+  target:
+    backend-dir: ./llvm-backend
+    name: MYISA

@@ -1,0 +1,33 @@
+simulate:
+  output-dir: ./build/sim
+  # simulate.py automatically assembles this source before simulation.
+  program: ./tests/PID_Performance_test.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r3
+      value: 6
+    - register: r4
+      value: 6010
+    - register: r6
+      value: 0
+    - register: r8
+      value: 12
+    - register: r9
+      value: 6010
+    - register: r10
+      value: 0
+    - register: r11
+      value: 6022
+  options:
+    max-cycles: 25000
+    trace: false
+  assembler: ./tools/asm.py
