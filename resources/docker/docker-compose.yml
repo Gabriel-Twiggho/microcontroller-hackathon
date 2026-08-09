@@ -17,8 +17,8 @@ services:
       args:
         LLVM_VERSION: ${LLVM_VERSION:-17.0.6}
         LLVM_BUILD_JOBS: ${LLVM_BUILD_JOBS:-4}
-        # Uncomment to bundle Quartus (installer must be in ./quartus/)
-        # QUARTUS_INSTALLER: QuartusLiteSetup-23.1std.0.991-linux.run
+        # Bundle the Quartus installer in ./quartus/ during the image build.
+        QUARTUS_INSTALLER: qinst-lite-linux-25.1std-1129.run
     image: hackathon-mcu-dev:latest
     container_name: hackathon-mcu-dev
 

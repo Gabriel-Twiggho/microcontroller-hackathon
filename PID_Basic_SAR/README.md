@@ -1,4 +1,4 @@
-# PID_Basic CPU
+# PID_Basic_SAR CPU
 
 This directory began as the Stage 0 project scaffold from the Tutorial
 Workbook. It now has an agreed initial PID instruction-set contract and a
@@ -12,7 +12,7 @@ single-cycle RTL implementation of that contract.
 | Address width | 16 bits |
 | Registers | 32 (`r0` is reserved as zero) |
 | Instruction-memory depth | 8192 words |
-| Data-memory depth | 32768 bytes (planned for Stage 3) |
+| Data-memory depth | 32768 bytes |
 | Reset vector | `0x0000` |
 
 The full instruction encoding, semantics, and PID-loop example are in
@@ -29,10 +29,13 @@ The supplied simulation tooling expects these names:
 
 They are present in the CPU and are used by the supplied simulation tooling.
 
-## Next step
+## Run the comparison workload
 
 Run the PID instruction test from the repository root:
 
 ```bash
-python3 resources/software/scripts/simulate.py PID_Basic/PID_Basic.simulate.yml
+python3 resources/software/scripts/simulate.py PID_Basic_SAR/PID_Basic.simulate.yml
 ```
+
+The simulation comparison against the baseline is recorded in
+[COMPARISON_REPORT.md](COMPARISON_REPORT.md).

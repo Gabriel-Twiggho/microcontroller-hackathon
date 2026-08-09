@@ -11,12 +11,14 @@ module test_harness;
     wire dbg_halt;
     reg [255*8-1:0] program_file;
     integer max_cycles;
+    integer program_words;
     integer cycle_count;
     integer loops;
     integer start_cycle;
     reg performance_done;
 
-    always #5 clk = ~clk;
+    // 50 MHz simulation clock.
+    always #10 clk = ~clk;
 
     cpu u_cpu (
         .clk(clk),
@@ -32,8 +34,12 @@ module test_harness;
         end
         if (!$value$plusargs("MAX_CYCLES=%d", max_cycles))
             max_cycles = 100000;
+        if (!$value$plusargs("PROGRAM_WORDS=%d", program_words))
+            program_words = `IMEM_DEPTH;
 
-        $readmemh(program_file, u_cpu.u_imem.mem);
+        // Loading only the generated program range avoids the harmless but
+        // noisy "not enough words" warning for short test programs.
+        $readmemh(program_file, u_cpu.u_imem.mem, 0, program_words - 1);
         $dumpfile("cpu_tb.vcd");
         $dumpvars(0, test_harness);
         // Release reset away from an active clock edge to avoid a race with

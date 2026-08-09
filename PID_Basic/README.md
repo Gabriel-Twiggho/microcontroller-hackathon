@@ -36,3 +36,6 @@ Run the PID instruction test from the repository root:
 ```bash
 python3 resources/software/scripts/simulate.py PID_Basic/PID_Basic.simulate.yml
 ```
+
+The measured simulation baseline is recorded in
+[BASELINE_REPORT.md](BASELINE_REPORT.md).

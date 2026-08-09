@@ -52,10 +52,9 @@ and `STORE`; it is an instruction address for absolute `JMP`.
 ```asm
 SAR r3, r2, #8    ; r3 = signed(r2) >>> 8
 SAR r3, r2, r4    ; shift amount comes from r4[4:0]
+```
 
 `NOP` is retained as an assembler pseudo-instruction for `ADD r0, r0, r0`.
-``` 
-
 
 ## Example PID loop shape
 

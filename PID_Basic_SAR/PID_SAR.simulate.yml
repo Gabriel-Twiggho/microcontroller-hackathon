@@ -1,0 +1,30 @@
+simulate:
+  output-dir: ./build/sar-sim
+  program: ./tests/Test_sar.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r2
+      value: 16
+    - register: r4
+      value: 0xFFFFFFFC
+    - register: r6
+      value: 8
+    - register: r7
+      value: 0xFFFFFFFF
+    - register: r8
+      value: 64
+    - register: r9
+      value: 0xFFFFFFFF
+  options:
+    max-cycles: 100
+    trace: false
+  assembler: ./tools/asm.py

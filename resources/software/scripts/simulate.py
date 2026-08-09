@@ -195,9 +195,19 @@ def compile_rtl(rtl_files, build_dir, sim_bin, trace=False, verbose=False):
         die(f"iverilog compilation failed:\n{out}")
     log("RTL compiled OK")
 
+def count_program_words(hex_path):
+    """Count data words in the simple one-word-per-line hex images we emit."""
+    with open(hex_path) as f:
+        return sum(1 for line in f
+                   if line.strip() and not line.lstrip().startswith(("//", "#")))
+
+
 def run_sim(sim_bin, hex_path, build_dir, max_cycles, verbose):
     log("Running simulation…")
-    rc, out = run(["vvp", sim_bin, f"+PROGRAM={hex_path}", f"+MAX_CYCLES={max_cycles}"],
+    program_words = count_program_words(hex_path)
+    rc, out = run(["vvp", sim_bin, f"+PROGRAM={hex_path}",
+                   f"+PROGRAM_WORDS={program_words}",
+                   f"+MAX_CYCLES={max_cycles}"],
                   cwd=build_dir, verbose=verbose)
     if rc != 0 and "ERROR" in out.upper():
         die(f"Simulation error:\n{out}")
