@@ -1,0 +1,28 @@
+simulate:
+  output-dir: ./build/sim
+  program: ./tests/05_full_pid_pwm_demo.asm
+  rtl:
+    base-dir: ./rtl
+    defines:
+      REG_COUNT: 16
+      IMEM_DEPTH: 64
+      DMEM_DEPTH: 512
+      DISPLAY_ACTUATOR: null
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - {register: r3, value: 0x00000000}  # error = 0.0
+    - {register: r4, value: 0x00006400}  # integral = 100.0, Q8.8
+    - {register: r5, value: 0xFFFFFFFF}  # output is below upper bound
+    - {register: r11, value: 0x00003200} # PID output = 50.0, Q8.8
+    - {register: r13, value: 50}         # raw PWM output
+  options:
+    max-cycles: 35000
+    trace: false
+  assembler: ./tools/asm.py
