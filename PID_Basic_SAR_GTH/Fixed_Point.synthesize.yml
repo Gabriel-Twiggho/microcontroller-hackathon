@@ -1,0 +1,11 @@
+synthesize:
+  output-dir: ./build/quartus-fixed-point
+  device: 5CSEMA5F31C6
+  top: cpu
+  rtl:
+    base-dir: ./rtl
+    defines: {GTH_FIXED_POINT_ROM: null}
+    files: [alu.v, decoder.v, regfile.v, imem.v, dmem.v, cpu.v]
+    include-testbench: false
+    extra-files: [./rtl/cpu.sdc]
+  quartus: {bin: ""}

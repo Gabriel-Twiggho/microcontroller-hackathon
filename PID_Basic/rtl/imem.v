@@ -8,5 +8,11 @@ module imem (
 );
     reg [`INSTR_WIDTH-1:0] mem [0:`IMEM_DEPTH-1];
 
+    // Quartus-only initialization for the reproducible FPGA analysis build.
+    // Simulation continues to load the selected program from the testbench.
+`ifdef ALTERA_RESERVED_QIS
+    initial $readmemh("../../../build/current-profile-sim/PID_Decimal_Performance_test.hex", mem);
+`endif
+
     assign instruction = mem[address];
 endmodule

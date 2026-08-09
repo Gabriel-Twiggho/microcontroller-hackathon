@@ -1,0 +1,17 @@
+simulate:
+  output-dir: ./build/fraction-mixed-sar-sim
+  program: ./tests/PID_FractionMixed_SAR_test.asm
+  rtl:
+    base-dir: ./rtl
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 16}
+    - {register: r4, value: 20}
+    - {register: r6, value: 8}
+    - {register: r8, value: 2048}
+    - {register: r9, value: 0xFFFFFB00}
+    - {register: r10, value: 256}
+    - {register: r11, value: 1024}
+    - {register: r12, value: 4}
+  options: {max-cycles: 100, trace: false}
+  assembler: ./tools/asm.py

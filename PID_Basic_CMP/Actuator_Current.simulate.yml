@@ -1,0 +1,14 @@
+simulate:
+  output-dir: ./build/actuator-current-sim
+  program: ./tests/PID_Actuator_Performance_test.asm
+  rtl:
+    base-dir: ./rtl
+    defines: {REG_COUNT: 32, IMEM_DEPTH: 256, DMEM_DEPTH: 1024, DISPLAY_ACTUATOR: null}
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 0xFFFFFE80}
+    - {register: r4, value: 0xFFFA2E40}
+    - {register: r5, value: 0xFFFFFFFF}
+    - {register: r11, value: 0xFFFD14E0}
+  options: {max-cycles: 35000, trace: false}
+  assembler: ./tools/asm.py

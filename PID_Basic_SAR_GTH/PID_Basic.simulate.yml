@@ -1,0 +1,73 @@
+simulate:
+  output-dir: ./build/fixed-point-sim
+
+  # simulate.py assembles this file to hex automatically.
+  program: ./tests/PID_Fixed_Point_test.asm
+
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+
+  verify:
+    # Test 1: 25 * -0.5 = -12.5
+    - register: r2
+      value: 0xFFFFFF80   # -128: Q8.8 representation of -0.5
+    - register: r3
+      value: 0xFFF38000   # -819200: raw Q16.16 product
+    - register: r4
+      value: 0xFFFFF380   # -3200: Q8.8 representation of -12.5
+
+    # Test 2: 25 * 0.5 = 12.5
+    - register: r5
+      value: 128
+    - register: r6
+      value: 819200
+    - register: r7
+      value: 3200
+
+    # Test 3: 25 * 3 = 75
+    - register: r8
+      value: 768
+    - register: r9
+      value: 4915200
+    - register: r10
+      value: 19200
+
+    # STORE/LOAD read-back checks
+    - register: r13
+      value: 0xFFFFF380
+    - register: r14
+      value: 3200
+    - register: r15
+      value: 19200
+
+    # JMP skipped "LI r16, #1"
+    - register: r16
+      value: 0
+
+    # -12.5 + 12.5 = 0
+    - register: r17
+      value: 0
+
+    # Test 4: -25.0 * -0.5 = 12.5
+    - register: r18
+      value: 0xFFFFE700
+    - register: r19
+      value: 0xFFFFFF80
+    - register: r20
+      value: 819200
+    - register: r21
+      value: 3200
+
+  options:
+    max-cycles: 100
+    trace: false
+
+  assembler: ./tools/asm.py

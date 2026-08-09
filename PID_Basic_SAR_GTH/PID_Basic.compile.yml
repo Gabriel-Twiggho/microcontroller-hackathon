@@ -1,0 +1,17 @@
+compile:
+  output-dir: ./build/compile
+  compiler:
+    install-dir: /opt/llvm
+    target: myisa
+    misc: [-O1]
+    codegen: [-O0]
+  output:
+    asm: true
+    hex: true
+    name: program
+    assembler: ./tools/asm.py
+  startup:
+    entry: main
+    args: []
+  # Stage 0 TODO: point this at the first C test in Stage 1.
+  groups: []

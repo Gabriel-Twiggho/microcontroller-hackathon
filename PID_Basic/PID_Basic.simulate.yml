@@ -1,7 +1,7 @@
 simulate:
   output-dir: ./build/sim
   # simulate.py automatically assembles this source before simulation.
-  program: ./tests/PID_Performance_test.asm
+  program: ./tests/PID_Fraction_test.asm
   rtl:
     base-dir: ./rtl
     files:
@@ -13,21 +13,10 @@ simulate:
       - cpu.v
       - tb.v
   verify:
-    - register: r3
-      value: 6
-    - register: r4
-      value: 6010
-    - register: r6
-      value: 0
-    - register: r8
-      value: 12
-    - register: r9
-      value: 6010
-    - register: r10
-      value: 0
-    - register: r11
-      value: 6022
+    - register: r2
+      value: 0xFFFFFFFC # -4 in 32-bit two's complement
+
   options:
-    max-cycles: 25000
+    max-cycles: 100
     trace: false
   assembler: ./tools/asm.py

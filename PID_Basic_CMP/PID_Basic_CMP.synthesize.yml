@@ -1,0 +1,20 @@
+synthesize:
+  output-dir: ./build/quartus
+  device: 5CSEMA5F31C6
+  top: cpu
+
+  rtl:
+    base-dir: ./rtl
+    files:
+      - alu.v
+      - decoder.v
+      - regfile.v
+      - imem.v
+      - dmem.v
+      - cpu.v
+    include-testbench: false
+    extra-files:
+      - ./rtl/cpu.sdc
+
+  quartus:
+    bin: ""

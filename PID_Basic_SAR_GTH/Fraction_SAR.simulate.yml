@@ -1,0 +1,17 @@
+simulate:
+  output-dir: ./build/fraction-sar-sim
+  program: ./tests/PID_Fraction_SAR_test.asm
+  rtl:
+    base-dir: ./rtl
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 8}
+    - {register: r4, value: 16}
+    - {register: r6, value: 8}
+    - {register: r8, value: 1024}
+    - {register: r9, value: 1024}
+    - {register: r10, value: 256}
+    - {register: r11, value: 2304}
+    - {register: r12, value: 9}
+  options: {max-cycles: 100, trace: false}
+  assembler: ./tools/asm.py

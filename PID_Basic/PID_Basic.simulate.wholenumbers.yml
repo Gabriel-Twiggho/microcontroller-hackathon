@@ -1,0 +1,32 @@
+simulate:
+  output-dir: ./build/whole-numbers-sim
+  program: ./PID_WholeNumbers_test.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r3
+      value: 20    # error
+    - register: r4
+      value: 120   # integral
+    - register: r6
+      value: 5     # derivative
+    - register: r8
+      value: 40    # P
+    - register: r9
+      value: 360   # I
+    - register: r10
+      value: 20    # D
+    - register: r11
+      value: 420   # output
+  options:
+    max-cycles: 25000
+    trace: false
+  assembler: ./tools/asm.py

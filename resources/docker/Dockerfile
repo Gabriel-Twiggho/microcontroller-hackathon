@@ -183,10 +183,9 @@ RUN pip3 install --no-cache-dir \
 # ---------------------------------------------------------------------------
 # Intel Quartus Prime Lite (optional — command-line EDA for Intel FPGAs)
 #
-# To include Quartus:
-#   1. Download from: https://www.intel.com/content/www/us/en/software-kit/
-#   2. Place the .run installer in:  ./quartus/
-#   3. Build with: --build-arg QUARTUS_INSTALLER=<filename>.run
+# To include Quartus, place Intel's .run installer in ./quartus/ and set
+# QUARTUS_INSTALLER. The current qinst installer downloads its selected
+# components during the Docker build.
 # ---------------------------------------------------------------------------
 ARG QUARTUS_INSTALLER=""
 ARG QUARTUS_INSTALL_DIR=/opt/quartus
@@ -199,17 +198,26 @@ RUN if [ -n "${QUARTUS_INSTALLER}" ] \
     && [ -f "/tmp/quartus-installer/${QUARTUS_INSTALLER}" ]; then \
     echo "Installing Quartus: ${QUARTUS_INSTALLER}" \
     && chmod +x "/tmp/quartus-installer/${QUARTUS_INSTALLER}" \
-    && "/tmp/quartus-installer/${QUARTUS_INSTALLER}" \
-    --mode unattended \
-    --installdir "${QUARTUS_INSTALL_DIR}" \
-    --accept_eula 1 \
-    && printf 'export PATH="%s/quartus/bin:$PATH"\nexport QUARTUS_ROOTDIR="%s/quartus"\n' \
-    "${QUARTUS_INSTALL_DIR}" "${QUARTUS_INSTALL_DIR}" \
-    > /etc/profile.d/quartus.sh ; \
+    && ( "/tmp/quartus-installer/${QUARTUS_INSTALLER}" \
+    --accept -- \
+    --cli \
+    --download-dir /tmp/quartus-download \
+    --install-dir "${QUARTUS_INSTALL_DIR}" \
+    --accept-eula \
+    --auto-install \
+    --delete-downloads \
+    || echo "Quartus installer returned non-zero after payload installation; verifying binaries" ) \
+    && quartus_sh="$(find "${QUARTUS_INSTALL_DIR}" -type f -path '*/quartus/bin/quartus_sh' -print -quit)" \
+    && test -n "${quartus_sh}" \
+    && "${quartus_sh}" --version \
+    && quartus_root="$(dirname "$(dirname "${quartus_sh}")")" \
+    && ln -s "${quartus_root}" "${QUARTUS_INSTALL_DIR}/current" \
+    && printf 'export PATH="%s/current/bin:$PATH"\nexport QUARTUS_ROOTDIR="%s/current"\n' \
+    "${QUARTUS_INSTALL_DIR}" "${QUARTUS_INSTALL_DIR}" > /etc/profile.d/quartus.sh ; \
     else \
     echo "Quartus not requested — skipping (--build-arg QUARTUS_INSTALLER=<file> to enable)" ; \
     fi \
-    && rm -rf /tmp/quartus-installer
+    && rm -rf /tmp/quartus-installer /tmp/quartus-download
 
 # ---------------------------------------------------------------------------
 # Helper scripts
@@ -222,7 +230,7 @@ RUN chmod +x /usr/local/bin/entrypoint /usr/local/bin/install-quartus
 # ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
-ENV PATH="/opt/llvm/bin:/opt/quartus/quartus/bin:${PATH}" \
+ENV PATH="/opt/llvm/bin:/opt/quartus/current/bin:${PATH}" \
     LLVM_SRC=/llvm-src \
     LLVM_BUILD=/llvm-build \
     LLVM_INSTALL=/opt/llvm

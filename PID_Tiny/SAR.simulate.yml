@@ -1,0 +1,14 @@
+simulate:
+  output-dir: ./build/sar-sim
+  program: ./tests/PID_Tiny_SAR.asm
+  rtl:
+    base-dir: ./rtl
+    defines: {TINY_HAS_SAR: null, TINY_SAR: null}
+    files: [imem.v, dmem.v, regfile.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 0xFFFF}
+    - {register: r4, value: 0xFC28}
+    - {register: r5, value: 0}
+    - {register: r7, value: 0xFE12}
+  options: {max-cycles: 40000, trace: false}
+  assembler: ./tools/asm.py

@@ -6,7 +6,8 @@ module cpu (
     input  wire                 clk,
     input  wire                 rst_n,
     output wire [`ADDR_MSB:0]   dbg_pc,
-    output wire                 dbg_halt
+    output wire                 dbg_halt,
+    output wire [`DATA_MSB:0]   dbg_write_data
 );
     reg [`ADDR_MSB:0] pc;
     reg halt_state;
@@ -120,4 +121,5 @@ module cpu (
 
     assign dbg_pc = pc;
     assign dbg_halt = halt_state;
+    assign dbg_write_data = write_data;
 endmodule

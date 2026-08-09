@@ -1,0 +1,11 @@
+synthesize:
+  output-dir: ./build/quartus-cmp
+  device: 5CSEMA5F31C6
+  top: cpu
+  rtl:
+    base-dir: ./rtl
+    defines: {TINY_HAS_SAR: null, TINY_HAS_CMP: null, TINY_CMP: null}
+    files: [regfile.v, imem.v, dmem.v, cpu.v]
+    include-testbench: false
+    extra-files: [./rtl/cpu.sdc]
+  quartus: {bin: ""}

@@ -1,0 +1,32 @@
+simulate:
+  output-dir: ./build/decimal-sim
+  program: ./tests/PID_Decimal_Performance_test.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r3
+      value: 0xFFFFFE80   # error: -1.5, Q8.8
+    - register: r4
+      value: 0xFFFA2E40   # integral: -1489.75, Q8.8
+    - register: r6
+      value: 0             # derivative: 0, Q8.8
+    - register: r8
+      value: 0xFFFFFDC0   # P: -2.25, Q8.8
+    - register: r9
+      value: 0xFFFD1720   # I: -744.875, Q8.8
+    - register: r10
+      value: 0             # D: 0, Q8.8
+    - register: r11
+      value: 0xFFFD14E0   # output: -747.125, Q8.8
+  options:
+    max-cycles: 30000
+    trace: false
+  assembler: ./tools/asm.py

@@ -1,0 +1,32 @@
+simulate:
+  output-dir: ./build/cmp-branch-sim
+  program: ./tests/Test_cmp_branch.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r3
+      value: 0xFFFFFFFB
+    - register: r5
+      value: 0
+    - register: r10
+      value: 1
+    - register: r11
+      value: 2
+    - register: r12
+      value: 3
+    - register: r13
+      value: 4
+    - register: r20
+      value: 0
+  options:
+    max-cycles: 200
+    trace: false
+  assembler: ./tools/asm.py

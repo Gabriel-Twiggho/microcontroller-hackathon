@@ -1,0 +1,12 @@
+simulate:
+  output-dir: ./build/c-equivalent-no-sar-sim
+  program: ./tests/PID_C_Equivalent_No_SAR_test.asm
+  rtl:
+    base-dir: ./rtl
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 0xFFFFFFEC}
+    - {register: r5, value: 0xFFFFCD60}
+    - {register: r9, value: 0xFFFFCD60}
+  options: {max-cycles: 16000, trace: false}
+  assembler: ./tools/asm.py

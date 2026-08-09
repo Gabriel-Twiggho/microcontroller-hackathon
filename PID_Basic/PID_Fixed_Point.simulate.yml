@@ -1,0 +1,20 @@
+simulate:
+  output-dir: ./build/fixed-point-no-sar-sim
+  program: ./tests/PID_Fixed_Point_No_SAR_test.asm
+  rtl:
+    base-dir: ./rtl
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r2, value: 0xFFFFFF80}
+    - {register: r3, value: 0xFFF38000}
+    - {register: r5, value: 128}
+    - {register: r6, value: 819200}
+    - {register: r8, value: 768}
+    - {register: r9, value: 4915200}
+    - {register: r13, value: 0xFFF38000}
+    - {register: r14, value: 819200}
+    - {register: r15, value: 4915200}
+    - {register: r16, value: 0}
+    - {register: r17, value: 0}
+  options: {max-cycles: 100, trace: false}
+  assembler: ./tools/asm.py

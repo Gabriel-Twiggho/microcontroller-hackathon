@@ -1,0 +1,34 @@
+simulate:
+  output-dir: ./build/fraction-hardcoded-sim
+  program: ./PID_Fraction_test.asm
+  rtl:
+    base-dir: ./rtl
+    files:
+      - imem.v
+      - dmem.v
+      - regfile.v
+      - alu.v
+      - decoder.v
+      - cpu.v
+      - tb.v
+  verify:
+    - register: r3
+      value: 8      # error
+    - register: r4
+      value: 16     # integral
+    - register: r6
+      value: 8      # derivative
+    - register: r8
+      value: 1024   # P (scaled Q8; real 4)
+    - register: r9
+      value: 1024   # I (scaled Q8; real 4)
+    - register: r10
+      value: 256    # D (scaled Q8; real 1)
+    - register: r11
+      value: 2304   # output, still scaled (Q8) -- untouched by the downscale
+    - register: r12
+      value: 9      # the REAL answer, produced entirely on-chip
+  options:
+    max-cycles: 25000
+    trace: false
+  assembler: ./tools/asm.py

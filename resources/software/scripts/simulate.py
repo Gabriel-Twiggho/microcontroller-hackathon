@@ -118,11 +118,15 @@ def load_config(yaml_path):
     max_cycles = int(options.get("max-cycles", 100_000))
     trace      = bool(options.get("trace", False))
     assembler  = rel(cfg.get("assembler", "")) or ""
+    verilog_macros = rtl.get("defines", {}) or {}
+    if not isinstance(verilog_macros, dict):
+        die("'rtl.defines' must be a mapping of macro names to values")
 
     return {
         "output_dir": output_dir, "program": program, "rtl_files": rtl_files,
         "entry": entry, "args": sargs, "verify": verify_list,
         "max_cycles": max_cycles, "trace": trace, "assembler": assembler,
+        "verilog_macros": verilog_macros,
     }
 
 def find_assembler(override):
@@ -168,7 +172,8 @@ def assemble(asm_path, hex_path, assembler_py):
         die(f"Assembly failed:\n{out}")
     log(f"Assembled → {hex_path}")
 
-def compile_rtl(rtl_files, build_dir, sim_bin, trace=False, verbose=False):
+def compile_rtl(rtl_files, build_dir, sim_bin, trace=False, verbose=False,
+                verilog_macros=None):
     if not shutil.which("iverilog"):
         die("iverilog not found — install: sudo apt install iverilog")
     if not rtl_files:
@@ -186,7 +191,11 @@ def compile_rtl(rtl_files, build_dir, sim_bin, trace=False, verbose=False):
     inc_flags = []
     for d in sorted(inc_dirs):
         inc_flags.extend(["-I", d])
-    cmd = ["iverilog", "-g2012"] + inc_flags + ["-o", sim_bin] + rtl_files
+    define_flags = []
+    for name, value in (verilog_macros or {}).items():
+        define_flags.append(f"-D{name}" if value is None else f"-D{name}={value}")
+    cmd = (["iverilog", "-g2012"] + define_flags + inc_flags +
+           ["-o", sim_bin] + rtl_files)
     if trace:
         cmd += ["-DTRACE"]
     log("Compiling RTL (iverilog)…")
@@ -293,7 +302,9 @@ def main():
         die(f"Unsupported program extension '{ext}' — expected .asm or .hex")
 
     sim_bin = os.path.join(build_dir, "sim")
-    compile_rtl(rtl_files, build_dir, sim_bin, trace=cfg["trace"], verbose=args.verbose)
+    compile_rtl(rtl_files, build_dir, sim_bin, trace=cfg["trace"],
+                verbose=args.verbose,
+                verilog_macros=cfg["verilog_macros"])
     output = run_sim(sim_bin, hex_path, build_dir, cfg["max_cycles"], verbose=args.verbose)
 
     if cfg["verify"]:

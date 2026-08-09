@@ -16,16 +16,20 @@ module regfile (
     reg [`DATA_MSB:0] regs [0:`REG_COUNT-1];
     integer i;
 
-    assign read_data_a = (read_addr_a == {`REG_ADDR_W{1'b0}}) ?
+    wire read_a_valid = (read_addr_a < `REG_COUNT);
+    wire read_b_valid = (read_addr_b < `REG_COUNT);
+
+    assign read_data_a = (read_addr_a == {`REG_ADDR_W{1'b0}} || !read_a_valid) ?
                          {`DATA_WIDTH{1'b0}} : regs[read_addr_a];
-    assign read_data_b = (read_addr_b == {`REG_ADDR_W{1'b0}}) ?
+    assign read_data_b = (read_addr_b == {`REG_ADDR_W{1'b0}} || !read_b_valid) ?
                          {`DATA_WIDTH{1'b0}} : regs[read_addr_b];
 
     always @(posedge clk) begin
         if (!rst_n) begin
             for (i = 0; i < `REG_COUNT; i = i + 1)
                 regs[i] <= {`DATA_WIDTH{1'b0}};
-        end else if (write_enable && write_addr != {`REG_ADDR_W{1'b0}}) begin
+        end else if (write_enable && write_addr != {`REG_ADDR_W{1'b0}} &&
+                     write_addr < `REG_COUNT) begin
             regs[write_addr] <= write_data;
         end
     end

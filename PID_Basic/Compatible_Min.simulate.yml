@@ -1,0 +1,14 @@
+simulate:
+  output-dir: ./build/compatible-min-sim
+  program: ./tests/PID_Decimal_Performance_test.asm
+  rtl:
+    base-dir: ./rtl
+    defines: {REG_COUNT: 16, IMEM_DEPTH: 64, DMEM_DEPTH: 512}
+    files: [imem.v, dmem.v, regfile.v, alu.v, decoder.v, cpu.v, tb.v]
+  verify:
+    - {register: r3, value: 0xFFFFFE80}
+    - {register: r4, value: 0xFFFA2E40}
+    - {register: r6, value: 0}
+    - {register: r11, value: 0xFD14E000}
+  options: {max-cycles: 25000, trace: false}
+  assembler: ./tools/asm.py

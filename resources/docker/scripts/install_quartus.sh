@@ -36,27 +36,36 @@ echo ""
 
 chmod +x "${INSTALLER}"
 
-# Silent install — accept EULA, no GUI, minimal component set
+# qinst is Intel's current online installer.  The Makeself wrapper receives
+# its own flags first; qinst arguments must follow `--`.
 "${INSTALLER}" \
-    --mode unattended \
-    --installdir "${INSTALL_DIR}" \
-    --accept_eula 1 \
-    --unattendedmodeui none
+    --accept -- \
+    --cli \
+    --download-dir /tmp/quartus-download \
+    --install-dir "${INSTALL_DIR}" \
+    --accept-eula \
+    --auto-install \
+    --delete-downloads
 
 echo ""
 echo "Quartus installed. Adding to PATH..."
 
 # Add to PATH system-wide
-cat >> /etc/profile.d/quartus.sh << EOF
-export PATH="${INSTALL_DIR}/quartus/bin:\${PATH}"
-export QUARTUS_ROOTDIR="${INSTALL_DIR}/quartus"
+QUARTUS_SH="$(find "${INSTALL_DIR}" -type f -path '*/quartus/bin/quartus_sh' -print -quit)"
+test -n "${QUARTUS_SH}"
+QUARTUS_ROOT="$(dirname "$(dirname "${QUARTUS_SH}")")"
+ln -sfn "${QUARTUS_ROOT}" "${INSTALL_DIR}/current"
+
+cat > /etc/profile.d/quartus.sh << EOF
+export PATH="${INSTALL_DIR}/current/bin:\${PATH}"
+export QUARTUS_ROOTDIR="${INSTALL_DIR}/current"
 EOF
 
 chmod +x /etc/profile.d/quartus.sh
 
 echo ""
 echo "Verifying installation..."
-"${INSTALL_DIR}/quartus/bin/quartus_sh" --version
+"${INSTALL_DIR}/current/bin/quartus_sh" --version
 
 echo ""
 echo "Done. Useful commands:"
